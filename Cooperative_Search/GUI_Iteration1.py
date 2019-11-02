@@ -24,7 +24,7 @@ graphic_object = graphic()
 global params
 
 def Launch_simulation_func(x):
-	os.chdir("/home/aniket/IAF/COE_visit_simulations/")
+	os.chdir("/home/abhinavjava/Cooperative_Search/")
 	os.system("python3 Sim_swarm.py " + str(x))
 
 def RTL_func():
@@ -36,7 +36,7 @@ def RTL_func():
 		vehicle.mode = VehicleMode("RTL")
 
 def Plan_mission_func():
-	os.chdir("/home/aniket/ardupilot/ArduCopter")
+	os.chdir("/home/abhinavjava/ardupilot/ArduCopter")
 	os.system("sim_vehicle.py -L L1 -I51 --map --sysid 51")
 
 def Plan_formation_func():
@@ -64,8 +64,8 @@ def Save_wp_func():
 	wp_list_file.close()
 
 def Start_mission_func():
-	os.chdir("/home/aniket/Downloads/")
-	os.system("gnome-terminal -e 'python3 swarmpolygon.py'")
+	os.chdir("/home/abhinavjava/Cooperative_Search/")
+	os.system("gnome-terminal -e 'python3 main.py'")
 
 home_layout = [[sg.Text('SwarmSIM Planner', size=(22, 1), font=("Helvetica", 25), text_color='#033F63',justification='left'), sg.Image("logo_50.png")],
 	[sg.Text('='  * 100, size=(80, 1), justification='center')],

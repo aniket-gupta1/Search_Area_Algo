@@ -15,26 +15,6 @@ from Swarm_Class import UAVSwarmBot
 from dividesearcharea.py import voronoi, coordinates, takeobservations, rectangle_mid_point
 from uncertainity_functions.py import average_uncertainity, contains_point
 
-m = 1000
-n = 1000
-centre_wp = [28.753410,77.116118] # enter coordinate
-
-
-# make uav list and arm and take off
-# should return a list of centre coordinates
-
-target_list = [[28.74967771793720,77.11411783334879], [28.74967771793748,77.11411783334871],[28.751431394862347,77.11519490731644],[28.75143139467584,77.11616940070783],[28.751836089398484,77.11616940070783]]
-
-vehicle = list()
-for i in range(N):
-    vehicle.append(UAVSwarmBot("127.0.0.1:" + str(14550 + i*10)))
-    p = rectangle_mid_point(m, n, centre_wp[0], centre_wp[1], vehicle[i].heading)
-	g_list = coordinates(m, n, p[0][0], p[0][1], 10, 10, vehicle[i].heading)
-	vehicle[i].g_list = g_list
-
-for i in range(N):
-    vehicle[i].arm_and_takeoff(10)
-
 
 def colab_search(UAVs, N, M, area_cell, g_list):
 	"""
@@ -97,20 +77,39 @@ def colab_search(UAVs, N, M, area_cell, g_list):
 			# update velocity using control law
 			UAV.update_velocity(1)
 
-		
+		time.sleep(1)
 
-	final_locations = []
 	for UAV in UAVs:
-		final_locations.append(UAV.getlocation)
-
-	return final_locations
+		print("UAV1: ", UAV.getlocation())
 
 
+m = 1000
+n = 1000
+centre_wp = [28.753410,77.116118] # enter coordinate
 
 
+# make uav list and arm and take off
+# should return a list of centre coordinates
+
+target_list = [[28.74967771793720,77.11411783334879], [28.74967771793748,77.11411783334871],[28.751431394862347,77.11519490731644],[28.75143139467584,77.11616940070783],[28.751836089398484,77.11616940070783]]
+
+vehicle = list()
+for i in range(5):
+    vehicle.append(UAVSwarmBot("127.0.0.1:" + str(14550 + i*10)))
+    p = rectangle_mid_point(m, n, centre_wp[0], centre_wp[1], vehicle[i].heading)
+	g_list = coordinates(m, n, p[0][0], p[0][1], 10, 10, vehicle[i].heading)
+	vehicle[i].g_list = g_list
+
+for i in range(5):
+    vehicle[i].arm_and_takeoff(10)
+
+vehicle[0].goto(28.754191, 77.111107)
+vehicle[1].goto(28.754191, 77.112196)
+vehicle[2].goto(28.754191, 77.113157)
+vehicle[3].goto(28.754191, 77.114192)
+vehicle[4].goto(28.754191, 77.115227)
 
 
-
-print(colab_search(vehicle, 5, 10000, ))
+colab_search(vehicle, 5, 10000, 100, g_list)
 
 
