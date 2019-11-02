@@ -48,6 +48,7 @@ class UAVSwarmBot:
 		self.id=int(self.vehicle.parameters['SYSID_THISMAV'])
 		self.UAVID = resource_cl.newid() # change for decentralized
 
+
 	def __str__(self):
 		return "UAVSwarmBot is the decentralized Probability Map based control law generation for an individual UAV."
 
@@ -86,8 +87,7 @@ class UAVSwarmBot:
 
 	def update_density(self):
 		self.density = []
-		for cell in self.__Q:
-			self.density.append(exp(-self.Kn*np.linalg.norm(cell)))
+		self.density.append(exp(-self.Kn*np.linalg.norm(self.__Q)))
 		
 	def update_Q(self, Zk_list):
 		"""
@@ -247,17 +247,17 @@ class UAVSwarmBot:
 						self.__dij[i][j] = 1/self.num_uavs
 
 
-    	def altitude(self):
-        	return self.vehicle.location.global_relative_frame.alt
+    def altitude(self):
+        return self.vehicle.location.global_relative_frame.alt
 
 
-    	def arm_and_takeoff(self, aTargetAltitude):
-        	while not self.vehicle.is_armable:
-            	print(" Waiting for vehicle to initialise...",self.id)
-            	time.sleep(1)
+    def arm_and_takeoff(self, aTargetAltitude):
+        while not self.vehicle.is_armable:
+            print(" Waiting for vehicle to initialise...",self.id)
+            time.sleep(1)
 
             
-        	print ("Arming motors",self.id)
+        print ("Arming motors",self.id)
         
 		# Copter should arm in GUIDED mode
 		self.vehicle.mode = dronekit.VehicleMode("GUIDED")

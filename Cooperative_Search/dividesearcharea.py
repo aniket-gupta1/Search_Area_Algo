@@ -9,9 +9,9 @@ import threading
 
 
 def distance(lat1,lat2,lon1,lon2): 
-	"""
-	returns: distance between two coordinates (lat, lon)
-	"""
+    """
+    returns: distance between two coordinates (lat, lon)
+    """
 
     lon1=radians(lon1) 
     lon2=radians(lon2) 
@@ -25,9 +25,9 @@ def distance(lat1,lat2,lon1,lon2):
     return(c*R)
 
 def bearing(lat1,lat2,lon1,lon2):
-	"""
-	returns: bearing angle in degrees between 2 coordinates
-	"""
+    """
+    returns: bearing angle in degrees between 2 coordinates
+    """
 
     lon1=radians(lon1)
     lon2=radians(lon2)
@@ -87,14 +87,14 @@ def rectangle(m,n,lat,lon,heading):
     return p1,p2,p3,p4
 
 def coordinates(m,n,lat1,lon1,l,b,heading):
-	"""
-	lat1, lon1: first vertice from left of rectangle
-	m: length of rectangle
-	n: breadth of rectangle
-	l: cell length
-	b: cell width
-	heading: angle in degrees
-	"""
+    """
+    lat1, lon1: first vertice from left of rectangle
+    m: length of rectangle
+    n: breadth of rectangle
+    l: cell length
+    b: cell width
+    heading: angle in degrees
+    """
     no_of_fov_w=int(n/b)+1
     no_of_fov_l=int(m/l)+1
     wplist=[]
@@ -140,13 +140,30 @@ def takeobservations(fov_x,fov_y,lat,lon,heading, cell_width, cell_length, targe
 
     return Z_list
 
+def rectangle_mid_point(m,n,lat,lon,heading):
+    heading=float(heading)
+    heading=radians(heading)
+    elat1,elon1=pointRadialDistance(lat,lon,heading,n/2)
+    elat2,elon2=pointRadialDistance(lat,lon,heading+pi,n/2)
+    rheading=heading+pi/2
+    lheading=heading-pi/2
+    lat1,lon1=pointRadialDistance(elat2,elon2,lheading,m/2)
+    lat2,lon2=pointRadialDistance(elat2,elon2,rheading,m/2)
+    lat3,lon3=pointRadialDistance(elat1,elon1,rheading,m/2)
+    lat4,lon4=pointRadialDistance(elat1,elon1,lheading,m/2)
+    p1=[lat1,lon1]
+    p2=[lat2,lon2]
+    p3=[lat3,lon3]
+    p4=[lat4,lon4]
+    return p1,p2,p3,p4
+
 
 def voronoi(neighbor_points):    
-	"""
-	neighbor_points: locations of a UAVs neighbors
-	returns vertices of voronoi points
-	"""
-	vor = Voronoi(neighbor_points)
-	return vor.vertices
+    """
+    neighbor_points: locations of a UAVs neighbors
+    returns vertices of voronoi points
+    """
+    vor = Voronoi(neighbor_points)
+    return vor.vertices
       
 

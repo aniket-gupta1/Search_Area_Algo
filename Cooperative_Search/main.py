@@ -9,26 +9,26 @@ import socket
 import json
 import time
 import sys
-from GraphClass.py import Graph
+from GraphClass import Graph
 import itertools
-from Swarm_Class.py import UAVSwarmBot
-from dividesearcharea.py import voronoi, coordinates, takeobservations
+from Swarm_Class import UAVSwarmBot
+from dividesearcharea.py import voronoi, coordinates, takeobservations, rectangle_mid_point
 from uncertainity_functions.py import average_uncertainity, contains_point
 
 m = 1000
 n = 1000
-centre_wp = [] # enter coordinate
+centre_wp = [28.753410,77.116118] # enter coordinate
 
 
 # make uav list and arm and take off
 # should return a list of centre coordinates
 
-target_list = []
+target_list = [[28.74967771793720,77.11411783334879], [28.74967771793748,77.11411783334871],[28.751431394862347,77.11519490731644],[28.75143139467584,77.11616940070783],[28.751836089398484,77.11616940070783]]
 
 vehicle = list()
 for i in range(N):
     vehicle.append(UAVSwarmBot("127.0.0.1:" + str(14550 + i*10)))
-    p = rectangle(m, n, centre_wp[0], centre_wp[1], vehicle[i].heading)
+    p = rectangle_mid_point(m, n, centre_wp[0], centre_wp[1], vehicle[i].heading)
 	g_list = coordinates(m, n, p[0][0], p[0][1], 10, 10, vehicle[i].heading)
 	vehicle[i].g_list = g_list
 
@@ -36,13 +36,13 @@ for i in range(N):
     vehicle[i].arm_and_takeoff(10)
 
 
-def colab_search(UAVs, N, M, density_list, average_uncertainity_deviation, area_cell, g_list):
+def colab_search(UAVs, N, M, area_cell, g_list):
 	"""
 	UAVs: list of UAV objects
 	N: Total Number of UAVs
 	M: total number of cell centres
 	"""
-	while abs(average_uncertainity(N, M, density_list, avg_uncertainity_deviation)) <= 0.1:
+	while True:
 		# create partition for each UAV
 		# update_Q for each UAV
 		# transmit_Q for each UAV
@@ -51,6 +51,9 @@ def colab_search(UAVs, N, M, density_list, average_uncertainity_deviation, area_
 		# using A calculate CM for each UAV
 		# generate control law for each UAV
 		# time.sleep(1)
+		if average_uncertainity(N,M,UAVs) <= 0.1:
+			break
+
 		friend_points = []
 		# contains the Z_list for each UAV at each iteration
 		UAVdict = dict()     
@@ -80,6 +83,9 @@ def colab_search(UAVs, N, M, density_list, average_uncertainity_deviation, area_
 			# fusion update
 			UAV.fusion_update(friend_Q_list)
 
+			# density update
+			UAV.update_density()
+
 			# calculate A
 			UAV.update_A(area_cell, g_list, M)
 
@@ -90,4 +96,21 @@ def colab_search(UAVs, N, M, density_list, average_uncertainity_deviation, area_
 
 			# update velocity using control law
 			UAV.update_velocity(1)
+
+		
+
+	final_locations = []
+	for UAV in UAVs:
+		final_locations.append(UAV.getlocation)
+
+	return final_locations
+
+
+
+
+
+
+
+print(colab_search(vehicle, 5, 10000, ))
+
 
