@@ -19,6 +19,9 @@ class swarmbot:
         self.pos= [self.vehicle.location.global_frame.lat,self.vehicle.location.global_frame.lon]
         return self.pos
     
+    def get_vel():
+        return self.vehicle.velocity
+
     def update_pos(self,pos,v):
         self.position=pos
         pos_x = pos[0]
@@ -53,6 +56,7 @@ class swarmbot:
     def heading(self):
         self.head=self.vehicle.heading
         return self.head
+        
 
     def altitude(self):
         return self.vehicle.location.global_relative_frame.alt
@@ -96,6 +100,7 @@ class swarmbot:
     def waypoints(self):
         return self.wplist
 
+
 def distance(lat1,lon1,lat2,lon2): 
     lon1=radians(lon1) 
     lon2=radians(lon2) 
@@ -124,8 +129,8 @@ def pointRadialDistance(lat1,lon1,angle,d):
     b=[lat,lon]
     return b
 
-def rectangle(m,n,lat,lon,heading):
-    heading=float(heading)
+def rectangle(m,n,lat,lon,head):
+    heading=float(head)
     heading=radians(heading)
     e=pointRadialDistance(lat,lon,heading,n)
     rheading=heading+pi/2
@@ -145,24 +150,34 @@ def bearing(lat1,lon1,lat2,lon2):
     bearing=atan2(sin(dlon)*cos(lat2),cos(lat1)*sin(lat2)-sin(lat1)*cos(lat2)*cos(dlon))
     return (degrees(bearing))
 def intialwaypoints(n,p1,p2,p3,p4,x):
-	dis=float(distance(p1[0],p1[1],p2[0],p2[1])/n)
-	a=[]
-	for i in range(n):
-	   if i==0:
-            uavi={}
-            uavi["intialwaypoints"]=pointRadialDistance(p1[0],p1[1],x,(dis/2))
-            uavi["finaalwaypoints"]=pointRadialDistance(p3[0],p3[1],x,(dis/2))
-            a.append(uavi)
-            y=pointRadialDistance(p1[0],p1[1],x,(dis/2))
-            z=pointRadialDistance(p3[0],p3[1],x,(dis/2))
-	   else:
-            uavi={}
-            uavi["intialwaypoints"]=pointRadialDistance(y[0],y[1],x,dis)
-            uavi["finaalwaypoints"]=pointRadialDistance(z[0],z[1],x,dis)
-            a.append(uavi)
-            y=pointRadialDistance(y[0],y[1],x,dis)
-            z=pointRadialDistance(z[0],z[1],x,dis)
-	return a
+    dis=1000*float(distance(p1[0],p1[1],p2[0],p2[1])/n)
+    a=[]
+    for i in range(n):
+        if i==0:
+            u=pointRadialDistance(p1[0],p1[1],x,(dis/2))
+            print(u)
+            a.append(u)
+        else:
+            nmmm=pointRadialDistance(a[i-1][0],a[i-1][1],x,(dis))
+            print(nmmm)
+            a.append(nmmm)
+    return a
+def finalwaypoins(n,p1,p2,p3,p4,x):
+    b=[]
+    dis=1000*float(distance(p1[0],p1[1],p2[0],p2[1])/n)
+    for i in range(n):
+        if i==0:
+            u=pointRadialDistance(p3[0],p3[1],x,(dis/2))
+            print(u)
+            b.append(u)
+        else:
+            nmmm=pointRadialDistance(b[i-1][0],b[i-1][1],x,(dis))
+            print(nmmm)
+            b.append(nmmm)
+    return b
+
+
+
 def minimumdistance(j):
     m=[]
     real=[]
@@ -171,8 +186,12 @@ def minimumdistance(j):
     for i in range(n):
         y=vehicle[i].get_pos()
         m.append(distance(x[0],x[1],y[0],y[1]))
-    a=m.sort(reverse=True)
-    for i in range(4):
+    a=[]
+    for i in m:
+        a.append(i)
+
+    a.sort()
+    for i in range(5):
         q=a[i]
         real.append(q)
     for i in real:
@@ -182,34 +201,58 @@ def minimumdistance(j):
 def updategbest(x):
     a=[]
     b=[]
-    for i in x:
-        a.append(vehiclei["pbest"])
-        b.append(vehiclei["gbest"])
-    m=a.sort(reverse=True)
-    n=b.sort(reverse=True)
+    for j in x:
+        a.append(uavs[j]["pbest"])
+        b.append(uavs[j]["gbest"])
+        #print(a,b)
+    m=[]
+    n=[]
+    for i in a:
+        m.append(i)
+    for i in b:
+        n.append(i)
+
+    m.sort(reverse=True)
+    n.sort(reverse=True)
     if m[0]>n[0]:
         gbest=m[0]
-        y=a.index(gbest)
+        y=a.index(m[0])
         q=x[y]
-        u=vehicleq["bestlocation"]
+        u=uavs[q]["bestlocation"]
+        #print(uavs[q]["bestloaction"])
     else:
         gbest=n[0]
-        y=b.index(gbest)
+        y=b.index(n[0])
         q=x[y]
-        u=vehicleq["gbestloc"]
-    for i in x:
-        vehiclei["gbest"]=gbest
-        vehiclei["gbestloc"]=u
 
-def generatevelocity(v,i,time):
-    vel=[]
+        u=uavs[q]["gbestloc"]
+        #print(uavs[q]["gbestloc"])
+    
+    for i in x:
+        uavs[i]["gbest"]=gbest
+        uavs[i]["gbestloc"]=u
+        #print(uavs[i])
+
+def generatevelocity(v,i,timer):
+    vel=[0,0,0]
     T=300
-    R1=((random.randrange(0,100,10))/100)
-    R2=((random.randrange(0,100,10))/100)
-    w=wstart-(wstart-wend)*(pow(time/T,2))
-    vel[0] = w*v[0] + R1*1000*(vehiclei["bestlocation"][0]-vehicle[i].get_pos()[0]) + R2*1000*(vehiclei["gbestloc"][0]-vehicle[i].get_pos()[0])
-    vel[1] = w*v[1] + R1*1000*(vehiclei["bestlocation"][1]-vehicle[i].get_pos()[1]) + R2*1000*(vehiclei["gbestloc"][1]-vehicle[i].get_pos()[1])
-    vel[2]=0
+    R1=(random.randrange(0,100,10)/100)
+
+    R2=(random.randrange(0,100,10)/100)
+    w=(wstart-(wstart-wend)*(pow(timer/T,2)))
+    print(R1,R2,w)
+    n=uavs[i]["bestlocation"]
+    m=uavs[i]["gbestloc"]
+    if n==[0,0]:
+
+        vel[0] = w*(v[0]) +  R2*1000*(m[0]-vehicle[i].get_pos()[0])
+        vel[1] = w*(v[1]) +  R2*1000*(m[1]-vehicle[i].get_pos()[1])
+        vel[2]=0
+    else:
+        vel[0] = w*(v[0]) + R1*1000*(n[0]-vehicle[i].get_pos()[0]) + R2*1000*(m[0]-vehicle[i].get_pos()[0])
+        vel[2]=0
+        vel[1] = w*(v[1]) + R1*1000*(n[1]-vehicle[i].get_pos()[1]) + R2*1000*(m[1]-vehicle[i].get_pos()[1])
+    print(vel)
     return vel
 
 
@@ -217,27 +260,37 @@ def generatevelocity(v,i,time):
 
 
 
-"""def spacearea(p1,p4):
+def spacearea(p1,p2,p3,sal,saw,heading):
     listt=[]
     i=p1[0]
-    while i==p4[0]:
-        if i==p1[0]:
-            j=p1[1]
-            while j==p4[1]:
-                k=[i,j]
-                listt.append(k)
-                u=pointRadialDistance(i,j,heading,0.1)
-                j=u[1]
-        else:
-            j=p[1]
-            while j==p4[1]:
-                k=[i,j]
-                listt.append(k)
-                u=pointRadialDistance(i,j,heading,0.1)
-                j=u[1]
-    p=pointRadialDistance(i,j,x,0.1)
-    i=p[0]
-return listt
+    j=p1[1]
+    x=sal/2
+    y=saw/2
+    heading=float(heading)
+    heading=radians(heading)
+    head=heading+pi/2
+    print(x,y)
+    counter=0
+    p=True
+    q=True
+    while p==True:
+        a=pointRadialDistance(i,j,head,2)
+        count=0
+        if counter==y:
+            break
+        while q==True:
+            if count==x:
+                break
+            listt.append([i,j])
+            z=pointRadialDistance(i,j,heading,2)
+            j=z[1]
+            i=z[0]
+            count=count+1
+        i=a[0]
+        j=a[1]
+        counter=counter+1
+    return listt
+"""
 def pointsremoval(lat,lon,x,u):
     a1,a2,a3,a4=rectangle(fol,fow,lat,lon,x)
     for i in u:
@@ -265,102 +318,151 @@ p1,p2,p3,p4=rectangle(sal,saw,lat,lon,heading)
 n=10#int(input("enter the no of uavs "))
 uavs=[]
 x=bearing(p1[0],p1[1],p2[0],p2[1])
-uavs=intialwaypoints(n,p1,p2,p3,p4,x)
+INITIALWAY=intialwaypoints(n,p1,p2,p3,p4,x)
+finalwaypoins=finalwaypoins(n,p1,p2,p3,p4,x)
 print(p1,p4)
-vehicle=[]
+humans=[]
+humans=spacearea(p1,p2,p3,sal,saw,heading)
+print(len(humans))
+indexs=[]
+for i in range(30):
+    indexw=random.randrange(0,250000-1)
+    indexs.append(indexw)
+loooopy=[]
+
+for i in indexs:
+    cods=humans[i]
+    point=[cods[0],cods[1],(random.randrange(70,100,1)/100)]
+    loooopy.append(point)
+    humans.remove(cods)
+vehicle=list()
 for i in range(n):
     vehicle.append(swarmbot("127.0.0.1:" + str(14550 + i*10)))
 
 for i in range(n):
-    vehicle[i].arm_and_takeoff(10)
-for i in range (10):
-
-    loi=[uavs[i]uavi["finaalwaypoints"][0],uavs[i]uavi["finaalwaypoints"][1],35]
-    vehicle[i].go_to(uavi[loi,5,5])
+    vehicle[i].arm_and_takeoff(5)
+for i in range (n):
+    loi=[finalwaypoins[i][0],finalwaypoins[i][1],5]
+    vehicle[i].update_pos(loi,5)
+uavs=[]
 
 for j in range(n):
-    vehiclej={}
-    vehiclej["pbest"]=0
-    vehiclej["gbest"]=0
-    vehiclej["bestlocation"]=0
-    vehiclej["gbestloc"]=0
-    vehiclej["velocity"]=5
+
+    veh={}
+    veh["vehicleno"]=j
+    veh["pbest"]=0
+    veh["gbest"]=0
+    veh["bestlocation"]=[0,0]
+    veh["gbestloc"]=0
+    veh["velocity"]=5
+    uavs.append(veh)
+extralist=[]
+
 wstart=0.9
 wend=0.4
 T=300#(int(input("enter mopso time")))
-
-
-
-
-
-time=0.1
+timer=0.1
 while True:
     for j in range(n):
         pos1=vehicle[j].get_pos()
-        a1,a2,a3,a4=rectangle(fol,fow,pos1[0],pos1[1],vehicle[i].heading())
+        header=vehicle[j].vehicle.heading
+        a1,a2,a3,a4=rectangle(fol,fow,pos1[0],pos1[1],header)
         for i in loooopy:
             if a1[0]<a4[0]:
                 if a1[1]>a4[1]:
                     if i[0]>=a1[0] and i[0]<=a4[0] and i[1]<=a1[1] and i[1]>=a4[1]:
-                        if i[2]>vehiclej["pbest"]:
-                            vehiclej["pbest"]=i[2]
-                            vehiclej["bestlocation"]=[i[0],i[1]]
+                        if i[2]>uavs[j]["pbest"]:
+                            uavs[j]["pbest"]=i[2]
+                            uavs[j]["bestlocation"]=[i[0],i[1]]
+                            print("block1")
+                            print(i)
+                            print(uavs[j])
                             x=minimumdistance(j)
+                            print(x)
                             updategbest(x)
-                            for i in x:
+                            for k in x:
                                 v=[]
-                                v=vehicle[i].velocity()
-                                vel=generatevelocity(v,i,time)
-                                vehicle[i].update_vel(vel)
+                                v=vehicle[k].get_vel()
+                                print(v)
+                                print(uavs[k])
+                                vel=generatevelocity(v,k,time)
+                                vehicle[k].update_vel(vel)
 
 
                 if a1[1]<=a4[1]:
                     if i[0]>=a1[0] and i[0]<=a4[0] and i[1]>=a1[1] and i[1]<=a4[1]:
-                        if i[2]>vehiclej["pbest"]:
-                            vehiclej["pbest"]=i[2]
-                            vehiclej["bestlocation"]=[i[0],i[1]]
+                        if i[2]>uavs[j]["pbest"]:
+                            uavs[j]["pbest"]=i[2]
+                            uavs[j]["bestlocation"]=[i[0],i[1]]
+                            print(i)
+                            print(uavs[j])
+                            print("block2")
                             x=minimumdistance(j)
+                            print(x)
                             updategbest(x)
-                            for i in x:
+                            for k in x:
                                 v=[]
-                                v=vehicle[i].velocity()
-                                vel=generatevelocity(v,i,time)
-                                vehicle[i].update_vel(vel)
+                                v=vehicle[k].vehicle.velocity
+                                print(v)
+                                print(uavs[k])
+                                vel=generatevelocity(v,k,timer)
+                                uavs[k]["velocity"]=[vel[0],vel[1],vel[2]]
+                                extralist.append(k)
+                                vehicle[k].update_vel(vel)
+                        
                         
 
 
             if a1[0]>a4[0]:
                 if a1[1]>=a4[1]:
                     if i[0]<=a1[0] and i[0]>=a4[0] and i[1]<=a1[1] and i[1]>=a4[1]:
-                        if i[2]>vehiclej["pbest"]:
-                            vehiclej["pbest"]=i[2]
-                            vehiclej["bestlocation"]=[i[0],i[1]]
+                        if i[2]>uavs[j]["pbest"]:
+                            uavs[j]["pbest"]=i[2]
+                            uavs[j]["bestlocation"]=[i[0],i[1]]
+                            print(i)
+                            print(uavs[j])
+                            print("block3")
                             x=minimumdistance(j)
+                            print(x)
                             updategbest(x)
-                            for i in x:
+                            for k in x:
                                 v=[]
-                                v=vehicle[i].velocity()
-                                vel=generatevelocity(v,i,time)
-                                vehicle[i].update_vel(vel)
+                                v=vehicle[k].vehicle.velocity
+                                print(v)
+                                print(uavs[k])
+                                vel=generatevelocity(v,k,timer)
+                                vehicle[k].update_vel(vel)
+
                       
                 if a1[1]<=a4[1]:
                     if i[0]<=a1[0] and i[0]>=a4[0] and i[1]>=a1[1] and i[1]<=a4[1]:
-                        if i[2]>vehiclej["pbest"]:
-                            vehiclej["pbest"]=i[2]
-                            vehiclej["bestlocation"]=[i[0],i[1]]
+                        if i[2]>uavs[j]["pbest"]:
+                            uavs[j]["pbest"]=i[2]
+                            uavs[j]["bestlocation"]=[i[0],i[1]]
+                            print(uavs[j])
+                            print(i)
+                            print("block4")
                             x=minimumdistance(j)
+                            print(x)
                             updategbest(x)
-                            for i in x:
+                            for k in x:
                                 v=[]
-                                v=vehicle[i].velocity()
-                                vel=generatevelocity(v,i,time)
-                                vehicle[i].update_vel(vel)
+                                v=vehicle[k].vehicle.velocity
+                                print(v)
+                                print(uavs[k])
+                                vel=generatevelocity(v,k,timer)
+                                vehicle[k].update_vel(vel)
+    extralist=list(set(extralist))
+    for jum in extralist:
+        vehicle[jum].update_vel(uavs[jum]["velocity"])
+
+                                
                        
-        loooopy.remove(i)
-    if time==300:
+        
+    if timer==300:
         print("end mopso")
         break
-    time=time+0.1
-    timesleep(0.1)
+    timer=timer+0.1
+    time.sleep(0.1)
 
 
