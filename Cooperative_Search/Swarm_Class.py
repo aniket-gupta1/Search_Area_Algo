@@ -1,21 +1,18 @@
-from scipy.spatial import Voronoi, votronoi_plot_2d
+from scipy.spatial import Voronoi
 import numpy as np 
 import dronekit
 import math
-import geopy
-import pandas as pd 
-import socket
-import json
 import time
 import sys
-from GraphClass.py import Graph
+from GraphClass import Graph
 import itertools
 from pymavlink import mavutil
-from uncertainity_functions.py import contains_point
+from uncertainity_functions import contains_point
+from generate_voronoi import voronoi
 
 class UAVSwarmBot:
-	UAVID = itertools.count().next
-	def __init__(self, s, network_range = 20, num_uavs = 5, p=0.9, q=0.3):
+	
+	def __init__(self, s, network_range = 500, num_uavs = 5, p=0.9, q=0.3):
 		"""
 		 location: a list of x and y coordinate of UAV initially, converted to a position vector (numpy)
 		 Q: list/hashmap of P transforms of all cells in the region
@@ -35,22 +32,23 @@ class UAVSwarmBot:
 		self.__Q = np.zeros(10000)
 		self.__network_range = network_range
 		self.num_uavs = num_uavs
-		self.__neighbors = Graph(n-1) # or just use list for simplicity
+		self.neighbors = Graph(num_uavs) # or just use list for simplicity
 		self.__velocity = np.zeros(2)
-		self.__dij = np.zeros(num_uavs, num_uavs)
+		self.__dij = np.zeros((num_uavs, num_uavs))
 		self.Kn = 2
 		self.Ku = 1
+		self.__location = [0, 0]
 		self.__voronoi_part_map = []
-		self.density = []
+		self.density = np.ones(10000)
 		self.A = 0 
-		self.CM = []
+		self.CM = [0, 0]
 		self.wplist=[]
 		self.id=int(self.vehicle.parameters['SYSID_THISMAV'])
-		self.UAVID = resource_cl.newid() # change for decentralized
+		self.UAVID = 0
 
 
 	def __str__(self):
-		return "UAVSwarmBot is the decentralized Probability Map based control law generation for an individual UAV."
+		return "UAVSwarmBot is the Probability Map based control law generation for an individual UAV."
 
 	def getQ(self):
 		"""	
@@ -60,10 +58,17 @@ class UAVSwarmBot:
 
 	def getlocation(self):
 		"""
-		returns: current location of UAV
+		returns current location of UAV"""
+		return self.__location
+
+	def updatelocation(self):
 		"""
+		updates: current location of UAV
+		"""
+		self.__location = [0, 0]
 		location = np.array([self.vehicle.location.global_frame.lat,self.vehicle.location.global_frame.lon])
-		return location
+		self.__location[0] = location[0]
+		self.__location[1] = location[1]
 
 
 	def getrange(self):
@@ -77,7 +82,7 @@ class UAVSwarmBot:
 		returns: string of the adjecency matrix of neighbors of the UAV
 		"""
 
-		return self.__neighbors.adjmatrix
+		return self.neighbors.adjmatrix
 
 	def getvoro(self):
 		"""
@@ -87,7 +92,8 @@ class UAVSwarmBot:
 
 	def update_density(self):
 		self.density = []
-		self.density.append(exp(-self.Kn*np.linalg.norm(self.__Q)))
+		for i in range(len(self.__Q)):
+			self.density.append(math.exp(-self.Kn*np.linalg.norm(self.__Q[i])))
 		
 	def update_Q(self, Zk_list):
 		"""
@@ -108,27 +114,32 @@ class UAVSwarmBot:
 		"""
 		"""
 		for j in range(self.num_uavs):
-			if self.__neighbors.containsEdge(self.UAVID, j):
+			if self.neighbors.containsEdge(self.UAVID, j):
 				for i in range(len(self.__Q)):
+
 					self.__Q[i] = self.__dij[self.UAVID][j]*friend_Q_list[j][i]
 
 	def update_A(self, area_cell, g_list, M):
-	"""
-	g_list: list of coordinates of centre of all points
-	"""
-		g_list = np.array(g_list[i])
+		"""
+		g_list: list of coordinates of centre of all points
+		"""
+		g_list = np.array(g_list)
 		self.A = 0
 		for i in range(M):
 			if contains_point(g_list[i], self.__voronoi_part_map):
 				self.A += area_cell*self.density[i]
 
-	def update_CM(self, area_cell, g_list):
-		self.CM = []
+	def update_CM(self, area_cell, g_list, M):
+		self.CM = [0, 0]
 		g_list = np.array(g_list)
+		flag = 0
 		for i in range(M):
 			if contains_point(g_list[i], self.__voronoi_part_map):
 				self.CM[0]+=((1/self.A)*(area_cell)*(self.density[i]))*g_list[i][0]
 				self.CM[1]+=((1/self.A)*(area_cell)*(self.density[i]))*g_list[i][1]
+				flag = 1
+		if flag == 0:
+			print("correct voronoi map")
 
 	def update_velocity(self, Ku):
 		"""
@@ -142,6 +153,7 @@ class UAVSwarmBot:
 		if mynorm > 5:
 			new_vel[0] = new_vel[0]*5/mynorm
 			new_vel[1] = new_vel[1]*5/mynorm
+
 		self.__velocity = new_vel
 
 		"""
@@ -164,6 +176,9 @@ class UAVSwarmBot:
 
 		self.vehicle.send_mavlink(msg)
 
+	def getvel(self):
+		return self.__velocity
+
 
 	def add_voro_point(self, pt):
 		"""
@@ -181,7 +196,7 @@ class UAVSwarmBot:
 	def updatevoronoi(self, point_list):
 		"""
 		"""
-		self.__voronoi_part_map = point_list
+		self.__voronoi_part_map = voronoi(point_list)
 
 	def norm(self, target_coordinate):
 		"""
@@ -191,32 +206,28 @@ class UAVSwarmBot:
 
 		# initialize zero matrix with 2 elements 
 		temp = np.zeros(2)
-
 		current_x = self.__location[0]
 		current_y = self.__location[1]
-
-		# converting the target_coordinate list in a numpy vector
-		target_coordinate = np.array(target_coordinate).transpose()
-
 		# add the x and y coordinate difference in the temp array respectively and calculate norm of the same
 		temp[0] = target_coordinate[0] - current_x
 		temp[1] = target_coordinate[1] - current_y
-		return np.linalg.norm(temp).round(4)
+		return np.linalg.norm(temp)
 
 	def inrange(self, target_coordinate):
 		"""
 		target_coordinate: a list of 2 elements containing x and y coordinate of target respectively
 		returns bool: checks if the given coordinate is in communication range with the UAVSwarmBot
 		"""
-		return  self.norm(target_coordinate) <= self.__network_range
+		return self.norm(target_coordinate) <= self.__network_range
 
 	def connect_to_neighbor(self, friend):
 		"""
 		friend: Numpy vector of friend ID
 		adds edge between 2 UAVs
 		"""
-		if self.inrange(friend.getlocation):
-			self.__neighbors.addEdge(self.UAVID, friend.UAVID)
+		if self.inrange(friend.getlocation()):
+			self.neighbors.addEdge(self.UAVID, friend.UAVID)
+
 
 	def remove_neighbor(self, friend):
 		"""
@@ -224,7 +235,7 @@ class UAVSwarmBot:
 		deletes edge between 2 UAVs
 		"""
 		if not self.inrange(friend.getlocation):
-			self.__neighbors.removeEdge(self.UAVID, friend.UAVID)
+			self.neighbors.removeEdge(self.UAVID, friend.UAVID)
 
 	def construct_weight_matrix(self):
 		"""
@@ -233,49 +244,49 @@ class UAVSwarmBot:
 		"""
 		count = 0
 		for i in range(self.num_uavs):
-			if self.__neighbors.containsEdge(self.UAVID, i):
+			if self.neighbors.containsEdge(self.UAVID, i):
 				count += 1
 		numneighbors = count
 
 		for i in range(self.num_uavs):
 			for j in range(self.num_uavs):
 
-				if self.__neighbors.containsEdge(self.UAVID, j):
+				if self.neighbors.containsEdge(self.UAVID, j):
 					if i != j:
 						self.__dij[i][j] = 1 - (numneighbors - 1)/self.num_uavs
 					else:
 						self.__dij[i][j] = 1/self.num_uavs
 
 
-    def altitude(self):
-        return self.vehicle.location.global_relative_frame.alt
+	def altitude(self):
+		return self.vehicle.location.global_relative_frame.alt
 
 
-    def arm_and_takeoff(self, aTargetAltitude):
-        while not self.vehicle.is_armable:
-            print(" Waiting for vehicle to initialise...",self.id)
-            time.sleep(1)
+	def arm_and_takeoff(self, aTargetAltitude):
+		while not self.vehicle.is_armable:
+			print(" Waiting for vehicle to initialise...",self.id)
+			time.sleep(1)
 
-            
-        print ("Arming motors",self.id)
-        
+
+		print ("Arming motors",self.id)
+
 		# Copter should arm in GUIDED mode
 		self.vehicle.mode = dronekit.VehicleMode("GUIDED")
 		self.vehicle.armed = True
 
 		while not self.vehicle.armed:
-		    print (" Waiting for arming...",self.id)
-		    time.sleep(1)
+			print (" Waiting for arming...",self.id)
+			time.sleep(1)
 
 		print ("Taking off!",self.id)
 		self.vehicle.simple_takeoff(aTargetAltitude)
 
 		while True:
-		    print (" Altitude: ", self.vehicle.location.global_relative_frame.alt)      
-		    if self.vehicle.location.global_relative_frame.alt>=aTargetAltitude*0.90: 
-			print ("Reached target altitude",self.id)
-			break
-		    time.sleep(1)
+			print (" Altitude: ", self.vehicle.location.global_relative_frame.alt)      
+			if self.vehicle.location.global_relative_frame.alt>=aTargetAltitude*0.90: 
+				print ("Reached target altitude",self.id)
+				break
+			time.sleep(1)
 
 	def land(self):
 		self.vehicle.mode = dronekit.VehicleMode("LAND")

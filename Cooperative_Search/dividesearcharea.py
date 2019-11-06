@@ -6,6 +6,8 @@ from dronekit import connect, VehicleMode, LocationGlobalRelative
 import numpy as np
 from math import *
 import threading
+from scipy.spatial import Voronoi
+from uncertainity_functions import contains_point
 
 
 def distance(lat1,lat2,lon1,lon2): 
@@ -84,7 +86,7 @@ def rectangle(m,n,lat,lon,heading):
     p2=[lat2,lon2]
     p3=[lat3,lon3]
     p4=[lat4,lon4]
-    return p1,p2,p3,p4
+    return [p1, p2, p3, p4]
 
 def coordinates(m,n,lat1,lon1,l,b,heading):
     """
@@ -126,17 +128,28 @@ def coordinates(m,n,lat1,lon1,l,b,heading):
 
 
 # take observations
-def takeobservations(fov_x,fov_y,lat,lon,heading, cell_width, cell_length, target_list, g_list):
+def takeobservations(fov_x,fov_y,lat,lon,heading, cell_width, cell_length, target_list, g_list, M):
     """
     """
-    vertices = rectangle(fov_x, fov_y, lat, lon, heading)
+    vertices = rectangle_mid_point(fov_x, fov_y, lat, lon, heading)
+    """
     lat1 = vertices[0][0]
     lon1 = vertices[0][1]
     fov_g_list = coordinates(fov_x,fov_y,lat1,lon1,cell_width,cell_length,heading)
-    Z_list = np.zeros(len(g_list))
-    for i in range(g_list):
-        if g_list[i] in fov_g_list and target_list:
-            Z_list[i] = 1
+    """
+    
+    Z_list = np.zeros(M)
+    for point in target_list:
+        if contains_point(point,vertices):
+            mindist = np.linalg.norm([g_list[0][0]-point[0], g_list[0][1]-point[1]])
+            minindex = 0
+            for i in range(M):
+                x = np.linalg.norm([g_list[i][0]-point[0], g_list[i][1]-point[1]])
+                if x < mindist:
+                    mindist = x
+                    minindex = i
+
+            Z_list[minindex] = 1
 
     return Z_list
 
@@ -157,13 +170,4 @@ def rectangle_mid_point(m,n,lat,lon,heading):
     p4=[lat4,lon4]
     return p1,p2,p3,p4
 
-
-def voronoi(neighbor_points):    
-    """
-    neighbor_points: locations of a UAVs neighbors
-    returns vertices of voronoi points
-    """
-    vor = Voronoi(neighbor_points)
-    return vor.vertices
-      
-
+    
