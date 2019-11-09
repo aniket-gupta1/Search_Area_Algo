@@ -12,8 +12,16 @@ from uncertainity_functions import average_uncertainity, contains_point
 from generate_voronoi import voronoi
 
 
+target_list = np.array([np.array([28.75414290238, 77.11490918927977 ]), np.array([28.752164395389574, 77.11208826546536]),
+    np.array([28.752659021986783, 77.11357566113641 ]), np.array([28.751939564869787, 77.11270373999307]), np.array([28.750950310777796, 77.11439629384002]), 
+    np.array([28.75346841118562, 77.11485790084004]), np.array([28.750995277183534, 77.11270373999307]), np.array([28.753243580784122, 77.11485790084004]), 
+    np.array([28.750815412960932, 77.11219084455331]),np.array([28.751804666510544, 77.11331921452077 ]), np.array([28.75328854717011, 77.11326792387256]),np.array([28.74969126087462, 77.11260116090511]),
+    np.array([28.7533784793307, 77.11326792387256]),np.array([28.751759700430252, 77.11331921452077]), np.array([28.751714734349957, 77.11331921452077 ]),np.array([28.749736226954923, 77.11260116090511]), 
+    np.array([28.752209361213502, 77.11342179360872]),np.array([28.753333513250407, 77.11326792387256]), np.array([28.75068051469051, 77.112344712081]),np.array([28.750860379021468, 77.11229342364126]), 
+    np.array([28.752164395133203, 77.11342179360872]), np.array([28.7522543272938, 77.11342179360872]), np.array([28.7522992933741, 77.11342179360872]),np.array([28.752344259454404, 77.11342179360872 ]), 
+    np.array([28.752344259543115 ,77.1129601866087]), np.array([28.75229929346282, 77.1129601866087]), np.array([28.752254327382527, 77.1129601866087])])
 
-target_list = [[28.74967771793720,77.11411783334879], [28.74967771793748,77.11411783334871],[28.751431394862347,77.11519490731644],[28.75143139467584,77.11616940070783],[28.751836089398484,77.11616940070783]]
+
 
 def colab_search(UAVs, N, M, area_cell, g_list):
 	"""
@@ -21,8 +29,7 @@ def colab_search(UAVs, N, M, area_cell, g_list):
 	N: Total Number of UAVs
 	M: total number of cell centres
 	"""
-	for UAV in UAVs:
-		UAV.updatelocation()
+
 	while True:
 		# create partition for each UAV
 		# update_Q for each UAV
@@ -38,13 +45,20 @@ def colab_search(UAVs, N, M, area_cell, g_list):
 		friend_points = np.zeros((N,2))
 		UAVdict = dict()
 		# contains the Z_list for each UAV at each iteration
+
+		# some basic initializations
 		for UAV in UAVs:
 			UAVdict[UAV.UAVID] = np.zeros(M)
+			UAV.updatelocation()
+			UAV.update_density()
+
 
 		for UAV in UAVs:
-			
-			for UAV in UAVs:
-				UAV.updatelocation()
+
+			for UAV2 in UAVs:
+				UAV2.updatelocation()
+				UAV.turn()
+
 
 			# getneighbors will return adjecency matrix of the graph class
 			for friends in UAVs:
@@ -54,11 +68,16 @@ def colab_search(UAVs, N, M, area_cell, g_list):
 			for i in range(len(neighbormatrix)):
 				if neighbormatrix[i] == 1:
 					friend_points[i] = (UAVs[i].getlocation())
+
+
 			UAV.updatevoronoi(friend_points)
 
 			# take observations and append in Z_klist
 			# Z_klist = []
-			Z_klist = takeobservations(70, 30,UAV.getlocation()[0], UAV.getlocation()[1], UAV.heading(), 10, 10, target_list, UAV.g_list, M)
+			Z_klist = takeobservations(70, 30, UAV.getlocation()[0], UAV.getlocation()[1], UAV.heading(), 10, 10, target_list, UAV.g_list, M)
+			for i in range(M):
+				if Z_klist[i] == 1:
+					UAV.wplist.append(g_list[i])
 			# update self Q
 
 			UAV.update_Q(Z_klist)
@@ -78,15 +97,19 @@ def colab_search(UAVs, N, M, area_cell, g_list):
 			# density update
 			UAV.update_density()
 
+
 			# calculate A
 			UAV.update_A(area_cell, g_list, M)
 
 			# calculate CM
 			UAV.update_CM(area_cell, g_list, M)
 
+
 			# update velocity using control law
-			UAV.update_velocity(1)
-			time.sleep(0.1)
+			UAV.update_velocity(100000)
+
+
+			time.sleep(0.01)
 
 	for UAV in UAVs:
 		print("UAV: ", UAV.getlocation())

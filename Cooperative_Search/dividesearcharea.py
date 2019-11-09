@@ -141,15 +141,17 @@ def takeobservations(fov_x,fov_y,lat,lon,heading, cell_width, cell_length, targe
     Z_list = np.zeros(M)
     for point in target_list:
         if contains_point(point,vertices):
-            mindist = np.linalg.norm([g_list[0][0]-point[0], g_list[0][1]-point[1]])
-            minindex = 0
-            for i in range(M):
-                x = np.linalg.norm([g_list[i][0]-point[0], g_list[i][1]-point[1]])
-                if x < mindist:
-                    mindist = x
-                    minindex = i
-
+            minindex = np.where(g_list == point)[0][0]
+            print(minindex)
             Z_list[minindex] = 1
+            #mindist = np.linalg.norm([g_list[0][0]-point[0], g_list[0][1]-point[1]])
+            #minindex = 0
+            #for i in range(M):
+                #x = np.linalg.norm([g_list[i][0]-point[0], g_list[i][1]-point[1]])
+                #if x < mindist:
+                    #mindist = x
+                    #minindex = i
+            
 
     return Z_list
 

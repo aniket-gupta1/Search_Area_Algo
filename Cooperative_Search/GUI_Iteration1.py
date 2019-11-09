@@ -65,7 +65,7 @@ def Save_wp_func():
 
 def Start_mission_func():
 	os.chdir("/home/abhinavjava/Cooperative_Search/")
-	os.system("gnome-terminal -e 'python3 main.py'")
+	os.system("gnome-terminal -e 'python3 main2.py'")
 
 home_layout = [[sg.Text('SwarmSIM Planner', size=(22, 1), font=("Helvetica", 25), text_color='#033F63',justification='left'), sg.Image("logo_50.png")],
 	[sg.Text('='  * 100, size=(80, 1), justification='center')],

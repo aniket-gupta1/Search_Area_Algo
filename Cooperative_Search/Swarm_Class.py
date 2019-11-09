@@ -10,9 +10,17 @@ from pymavlink import mavutil
 from uncertainity_functions import contains_point
 from generate_voronoi import voronoi
 
+#bounding_box_helper = np.array(rectangle_mid_point(1000, 1000, 28.753300, 77.116118, 268))
+x_min = 28.749538  
+x_max = 28.754403
+y_max = 77.116787
+y_min = 77.109627
+bounding_box = np.array([x_min,x_max,y_min,y_max])
+
+
 class UAVSwarmBot:
 	
-	def __init__(self, s, network_range = 500, num_uavs = 5, p=0.9, q=0.3):
+	def __init__(self, s, init_pmap=np.array([0.5 for i in range(10000)]), network_range = 5000, num_uavs = 20, p=0.9, q=0.3):
 		"""
 		 location: a list of x and y coordinate of UAV initially, converted to a position vector (numpy)
 		 Q: list/hashmap of P transforms of all cells in the region
@@ -29,15 +37,16 @@ class UAVSwarmBot:
 		self.g_list = []
 		self.p = p 
 		self.q = q
+		self.init_pmap = init_pmap
 		self.__Q = np.zeros(10000)
 		self.__network_range = network_range
 		self.num_uavs = num_uavs
 		self.neighbors = Graph(num_uavs) # or just use list for simplicity
 		self.__velocity = np.zeros(2)
 		self.__dij = np.zeros((num_uavs, num_uavs))
-		self.Kn = 2
+		self.Kn = 0.0002
 		self.Ku = 1
-		self.__location = [0, 0]
+		self.__location = [self.vehicle.location.global_frame.lat,self.vehicle.location.global_frame.lon]
 		self.__voronoi_part_map = []
 		self.density = np.ones(10000)
 		self.A = 0 
@@ -59,16 +68,19 @@ class UAVSwarmBot:
 	def getlocation(self):
 		"""
 		returns current location of UAV"""
+		self.__location=[self.vehicle.location.global_frame.lat,self.vehicle.location.global_frame.lon]
 		return self.__location
 
 	def updatelocation(self):
 		"""
 		updates: current location of UAV
 		"""
-		self.__location = [0, 0]
-		location = np.array([self.vehicle.location.global_frame.lat,self.vehicle.location.global_frame.lon])
-		self.__location[0] = location[0]
-		self.__location[1] = location[1]
+		return [self.vehicle.location.global_frame.lat,self.vehicle.location.global_frame.lon]
+
+	def transform_pmap(self, M):
+		"""linearizes given probability map"""
+		for i in range(M):
+			self.__Q[i] = math.log((1/self.init_pmap[i])-1)
 
 
 	def getrange(self):
@@ -141,12 +153,42 @@ class UAVSwarmBot:
 		if flag == 0:
 			print("correct voronoi map")
 
+	def turn(self):
+		if (self.__location[0] < bounding_box[0] or self.__location[0] > bounding_box[1]) and (self.__location[1] < bounding_box[2] or self.__location[1] > bounding_box[3]):
+			self.__velocity[0] = -self.__velocity[0]
+			self.__velocity[1] = -self.__velocity[1]
+		elif (self.__location[0] < bounding_box[0] or self.__location[0] > bounding_box[1]):
+			self.__velocity[0] = -self.__velocity[0]
+		elif (self.__location[1] < bounding_box[2] or self.__location[1] > bounding_box[3]):
+			self.__velocity[1] = -self.__velocity[1]
+
+		"""
+        Move vehicle in direction based on specified velocity vectors.
+        """
+		msg = self.vehicle.message_factory.set_position_target_global_int_encode(
+		    0,       # time_boot_ms (not used)
+		    0, 0,    # target system, target component
+		    mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT, # frame
+		    0b0000111111000111, # type_mask (only speeds enabled)
+		    0, # lat_int - X Position in WGS84 frame in 1e7 * meters
+		    0, # lon_int - Y Position in WGS84 frame in 1e7 * meters
+		    0, # alt - Altitude in meters in AMSL altitude(not WGS84 if absolute or relative)
+		    # altitude above terrain if GLOBAL_TERRAIN_ALT_INT
+		    self.__velocity[0], # X velocity in NED frame in m/s
+		    self.__velocity[1], # Y velocity in NED frame in m/s
+		    0, # Z velocity in NED frame in m/s
+		    0, 0, 0, # afx, afy, afz acceleration (not supported yet, ignored in GCS_Mavlink)
+		    0, 0)    # yaw, yaw_rate (not supported yet, ignored in GCS_Mavlink)
+
+		self.vehicle.send_mavlink(msg)
+
 	def update_velocity(self, Ku):
 		"""
 		changes the velocity vector of the UAV
 		"""
-		vel_x = -Ku*(self.CM[0] - self.__location[0])
-		vel_y = -Ku*(self.CM[1] - self.__location[1])
+		heuristic = self.forward_heuristic()
+		vel_x = Ku*(self.CM[0] - self.__location[0]) + heuristic[0]*10000
+		vel_y = Ku*(self.CM[1] - self.__location[1]) + heuristic[1]*10000
 		new_vel = [vel_x, vel_y]
 		mynorm = np.linalg.norm(new_vel)
 
@@ -176,6 +218,16 @@ class UAVSwarmBot:
 
 		self.vehicle.send_mavlink(msg)
 
+	def forward_heuristic(self):
+
+		location = self.getlocation()
+		wp = [0.0003827,0]
+		#getvector = [location[0]-wp[0], location[1]]
+		#dist = np.linalg.norm(getvector)
+		#getvector[0] = getvector[0]/dist
+		#getvector[1] = getvector[1]/dist
+		return wp
+
 	def getvel(self):
 		return self.__velocity
 
@@ -195,8 +247,10 @@ class UAVSwarmBot:
 
 	def updatevoronoi(self, point_list):
 		"""
+		returns: vertices of the voronoi region for a UAV object
 		"""
-		self.__voronoi_part_map = voronoi(point_list)
+
+		self.__voronoi_part_map = voronoi(point_list, self.__location)[1]
 
 	def norm(self, target_coordinate):
 		"""

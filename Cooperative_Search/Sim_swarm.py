@@ -8,7 +8,7 @@ k=0
 string = "mavproxy.py"
 
 def Launch_SITL_instances(i):
-	os.chdir("/home/aniket/ardupilot/ArduCopter/")
+	os.chdir("/home/abhinavjava/ardupilot/ArduCopter/")
 	os.system("sim_vehicle.py -I"+str(i)+" --out=127.0.0.1:"+ str(14552 + i*10) +" --sysid "+str(i+1)+" -L a"+str(i+1))
 
 

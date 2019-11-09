@@ -6,13 +6,16 @@ import sys
 import matplotlib.pyplot as plt
 from dividesearcharea import rectangle_mid_point
 
+
 eps = sys.float_info.epsilon
-bounding_box_helper = np.array(rectangle_mid_point(1000, 1000, 28.753410, 77.116118, 0))
-x_min = bounding_box_helper[0][0]
-x_max = bounding_box_helper[2][0]
-y_min = bounding_box_helper[0][1]
-y_max = bounding_box_helper[1][1]
+#bounding_box_helper = np.array(rectangle_mid_point(1000, 1000, 28.753300, 77.116118, 268))
+x_min = 28.749538  
+x_max = 28.754403
+y_max = 77.116787
+y_min = 77.109627
 bounding_box = np.array([x_min,x_max,y_min,y_max])
+
+
 
 
 def in_box(towers, bounding_box= bounding_box):
@@ -22,9 +25,10 @@ def in_box(towers, bounding_box= bounding_box):
                                          towers[:, 1] <= bounding_box[3]))
 
 
-def voronoi(towers, bounding_box=bounding_box):
+def voronoi(towers, associated_point, bounding_box=bounding_box):
     # Select towers inside the bounding box
     i = in_box(towers, bounding_box)
+
     # Mirror points
     points_center = towers[i, :]
     points_left = np.copy(points_center)
@@ -66,7 +70,23 @@ def voronoi(towers, bounding_box=bounding_box):
     vor.filtered_points = points_center
     vor.filtered_regions = regions
 
-    return vor
+    for i, reg in enumerate(vor.filtered_regions):
+
+        #print ('Region:', i)
+        #print ('Indices of vertices of Voronoi region:', reg)
+        #print('Voronoi vertices of associated region:')
+        vor_vertices = []
+        for ind in reg:
+            vor_vertices.append(vor.vertices[ind])
+        #print ('Associated point:', arr[i], '\n') 
+        if towers[i][0] == associated_point[0] and towers[i][1] == associated_point[1]:
+            #fig = sp.spatial.voronoi_plot_2d(vor, show_vertices=True)
+            #plt.show()
+
+            return (vor, vor_vertices)
+
+    return (vor, None)
+"""
 
 def centroid_region(vertices):
     # Polygon's signed area
@@ -86,50 +106,31 @@ def centroid_region(vertices):
     return np.array([[C_x, C_y]])
 
 
-arr = np.array([[0, 0],
- [1, 1],
- [0, 2],
- [4, 3],
- [0, 5],])
+arr = np.array([[28.754142903188733, 77.11070344667375],[28.753153649343314, 77.11111376302556],[28.751175141672377, 77.11183181664124],[28.75207446299233, 77.11331921452077],[28.752928818034658, 77.11583240107137]])
+vor = voronoi(arr, [28.753153649343314, 77.11111376302556])
 
-
-#print(voronoi(arr,[0, 10, 0 , 10]))
-"""
-vor = (sp.spatial.Voronoi(arr))
-print(vor.vertices)
-fig = sp.spatial.voronoi_plot_2d(vor)
-
-plt.show()
-
-
-[[0.74298619 0.29963513]
- [0.14033699 0.59071851]
- [0.32851465 0.72294695]
- [0.57220957 0.53412554]
- [0.3972714  1.04243969]
- [0.73324051 0.8747537 ]
- [0.5805757  0.01463616]
- [0.24867535 0.38369567]
- [1.0268243  0.39926251]
- [1.88700073 0.60429849]
- [0.75800064 0.74872197]
- [0.76292326 0.76783348]]
-
-"""
-bounding_box = [-1,5,-1,5]
-vor = voronoi(arr, bounding_box)
-exes = vor.vertices[:, 0]
-ohs = vor.vertices[:, 1]
+exes = vor[0].vertices[:, 0]
+ohs = vor[0].vertices[:, 1]
 pts = []
 for ex,oh in zip(exes, ohs):
     if (ex >= bounding_box[0] and ex <= bounding_box[1] and oh >= bounding_box[2] and oh <= bounding_box[3]):
         pts.append([ex, oh])
 
-print(vor.vertices[0])
-print(len(vor.vertices))
-print(pts)
-fig = sp.spatial.voronoi_plot_2d(vor, show_vertices=True)
+print(vor[1])
 
+#print(pts)
 
+for i, reg in enumerate(vor.filtered_regions):
+
+    print ('Region:', i)
+    print ('Indices of vertices of Voronoi region:', reg)
+    print('Voronoi vertices of associated region:')
+    for ind in reg:
+        print(vor.vertices[ind], end = ",")
+    print()
+    print ('Associated point:', arr[i], )
+
+fig = sp.spatial.voronoi_plot_2d(vor[0], show_vertices=True)
 plt.show()
+"""
 
