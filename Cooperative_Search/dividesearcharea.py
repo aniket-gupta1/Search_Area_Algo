@@ -107,21 +107,21 @@ def coordinates(m,n,lat1,lon1,l,b,heading):
     p=[lat,lon]
     wplist.append(p)
     for i in range(no_of_fov_w-1):
-        lat,lon=pointRadialDistance(lat,lon,heading,b/2)
+        lat,lon=pointRadialDistance(lat,lon,heading,b)
         p=[lat,lon]
         wplist.append(p)
 
     for i in range(no_of_fov_l-1):
-        lat,lon=pointRadialDistance(lat,lon,heading+pi/2,l/2)
+        lat,lon=pointRadialDistance(lat,lon,heading+pi/2,l)
         p=[lat,lon]
         wplist.append(p)
         for j in range(no_of_fov_w-1):
             if(i%2==0):
-                lat,lon=pointRadialDistance(lat,lon,heading+pi,b/2)
+                lat,lon=pointRadialDistance(lat,lon,heading+pi,b)
                 p=[lat,lon]
                 wplist.append(p)
             else:
-                lat,lon=pointRadialDistance(lat,lon,heading,b/2)
+                lat,lon=pointRadialDistance(lat,lon,heading,b)
                 p=[lat,lon]
                 wplist.append(p)
     return wplist

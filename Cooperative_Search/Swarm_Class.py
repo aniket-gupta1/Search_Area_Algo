@@ -9,18 +9,20 @@ import itertools
 from pymavlink import mavutil
 from uncertainity_functions import contains_point
 from generate_voronoi import voronoi
+from dividesearcharea import rectangle_mid_point
 
-#bounding_box_helper = np.array(rectangle_mid_point(1000, 1000, 28.753300, 77.116118, 268))
-x_min = 28.749538  
-x_max = 28.754403
-y_max = 77.116787
-y_min = 77.109627
+bounding_box_helper = np.array(rectangle_mid_point(1000, 1000, 28.753300, 77.116118, 0))
+x_min =  bounding_box_helper[0][0]
+x_max = bounding_box_helper[2][0]
+y_max = bounding_box_helper[1][1]
+y_min = bounding_box_helper[0][1]
 bounding_box = np.array([x_min,x_max,y_min,y_max])
 
+M = 10201
 
 class UAVSwarmBot:
 	
-	def __init__(self, s, init_pmap=np.array([0.5 for i in range(10000)]), network_range = 5000, num_uavs = 20, p=0.9, q=0.3):
+	def __init__(self, s, init_pmap=np.array([0.5 for i in range(10000)]), network_range = 50000, num_uavs = 20, p=0.9, q=0.3):
 		"""
 		 location: a list of x and y coordinate of UAV initially, converted to a position vector (numpy)
 		 Q: list/hashmap of P transforms of all cells in the region
@@ -38,17 +40,17 @@ class UAVSwarmBot:
 		self.p = p 
 		self.q = q
 		self.init_pmap = init_pmap
-		self.__Q = np.zeros(10000)
+		self.__Q = np.zeros(10201)
 		self.__network_range = network_range
 		self.num_uavs = num_uavs
 		self.neighbors = Graph(num_uavs) # or just use list for simplicity
 		self.__velocity = np.zeros(2)
 		self.__dij = np.zeros((num_uavs, num_uavs))
-		self.Kn = 0.0002
+		self.Kn = 2
 		self.Ku = 1
 		self.__location = [self.vehicle.location.global_frame.lat,self.vehicle.location.global_frame.lon]
 		self.__voronoi_part_map = []
-		self.density = np.ones(10000)
+		self.density = np.ones(10201)
 		self.A = 0 
 		self.CM = [0, 0]
 		self.wplist=[]
@@ -103,16 +105,15 @@ class UAVSwarmBot:
 		return self.__voronoi_part_map
 
 	def update_density(self):
-		self.density = []
-		for i in range(len(self.__Q)):
-			self.density.append(math.exp(-self.Kn*np.linalg.norm(self.__Q[i])))
+		for i in range(M):
+			self.density[i] = (math.exp(-self.Kn*abs(self.__Q[i])))
 		
 	def update_Q(self, Zk_list):
 		"""
 		changes the value of Q list
 		"""
 
-		for i in range(len(self.__Q)):
+		for i in range(M):
 			if Zk_list[i] == 1:
 				v = math.log(self.q/self.p)
 			elif Zk_list[i] == 0:
@@ -127,28 +128,26 @@ class UAVSwarmBot:
 		"""
 		for j in range(self.num_uavs):
 			if self.neighbors.containsEdge(self.UAVID, j):
-				for i in range(len(self.__Q)):
+				for i in range(M):
 
 					self.__Q[i] = self.__dij[self.UAVID][j]*friend_Q_list[j][i]
 
-	def update_A(self, area_cell, g_list, M):
+	def update_A(self, area_cell, M):
 		"""
 		g_list: list of coordinates of centre of all points
 		"""
-		g_list = np.array(g_list)
 		self.A = 0
 		for i in range(M):
-			if contains_point(g_list[i], self.__voronoi_part_map):
+			if contains_point(self.g_list[i], self.__voronoi_part_map):
 				self.A += area_cell*self.density[i]
 
-	def update_CM(self, area_cell, g_list, M):
+	def update_CM(self, area_cell, M):
 		self.CM = [0, 0]
-		g_list = np.array(g_list)
 		flag = 0
 		for i in range(M):
-			if contains_point(g_list[i], self.__voronoi_part_map):
-				self.CM[0]+=((1/self.A)*(area_cell)*(self.density[i]))*g_list[i][0]
-				self.CM[1]+=((1/self.A)*(area_cell)*(self.density[i]))*g_list[i][1]
+			if contains_point(self.g_list[i], self.__voronoi_part_map):
+				self.CM[0]+=((1/self.A)*(area_cell)*(self.density[i]))*self.g_list[i][0]
+				self.CM[1]+=((1/self.A)*(area_cell)*(self.density[i]))*self.g_list[i][1]
 				flag = 1
 		if flag == 0:
 			print("correct voronoi map")
@@ -187,9 +186,10 @@ class UAVSwarmBot:
 		changes the velocity vector of the UAV
 		"""
 		heuristic = self.forward_heuristic()
-		vel_x = Ku*(self.CM[0] - self.__location[0]) + heuristic[0]*10000
-		vel_y = Ku*(self.CM[1] - self.__location[1]) + heuristic[1]*10000
+		vel_x = Ku*(self.CM[0] - self.__location[0]) + heuristic[0]*100
+		vel_y = Ku*(self.CM[1] - self.__location[1]) 
 		new_vel = [vel_x, vel_y]
+		
 		mynorm = np.linalg.norm(new_vel)
 
 		if mynorm > 5:
@@ -221,7 +221,7 @@ class UAVSwarmBot:
 	def forward_heuristic(self):
 
 		location = self.getlocation()
-		wp = [0.0003827,0]
+		wp = [0.011,0]
 		#getvector = [location[0]-wp[0], location[1]]
 		#dist = np.linalg.norm(getvector)
 		#getvector[0] = getvector[0]/dist

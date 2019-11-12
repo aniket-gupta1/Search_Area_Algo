@@ -8,15 +8,13 @@ from dividesearcharea import rectangle_mid_point
 
 
 eps = sys.float_info.epsilon
-#bounding_box_helper = np.array(rectangle_mid_point(1000, 1000, 28.753300, 77.116118, 268))
-x_min = 28.749538  
-x_max = 28.754403
-y_max = 77.116787
-y_min = 77.109627
+
+bounding_box_helper = np.array(rectangle_mid_point(1000, 1000, 28.753300, 77.116118, 0))
+x_min =  bounding_box_helper[0][0]
+x_max = bounding_box_helper[2][0]
+y_max = bounding_box_helper[1][1]
+y_min = bounding_box_helper[0][1]
 bounding_box = np.array([x_min,x_max,y_min,y_max])
-
-
-
 
 def in_box(towers, bounding_box= bounding_box):
     return np.logical_and(np.logical_and(bounding_box[0] <= towers[:, 0],
@@ -28,7 +26,6 @@ def in_box(towers, bounding_box= bounding_box):
 def voronoi(towers, associated_point, bounding_box=bounding_box):
     # Select towers inside the bounding box
     i = in_box(towers, bounding_box)
-
     # Mirror points
     points_center = towers[i, :]
     points_left = np.copy(points_center)
