@@ -5,7 +5,7 @@ import scipy.spatial
 import sys
 import matplotlib.pyplot as plt
 from dividesearcharea import rectangle_mid_point
-
+from logging import debug
 
 eps = sys.float_info.epsilon
 
@@ -15,6 +15,7 @@ x_max = bounding_box_helper[2][0]
 y_max = bounding_box_helper[1][1]
 y_min = bounding_box_helper[0][1]
 bounding_box = np.array([x_min,x_max,y_min,y_max])
+
 
 def in_box(towers, bounding_box= bounding_box):
     return np.logical_and(np.logical_and(bounding_box[0] <= towers[:, 0],
@@ -77,8 +78,6 @@ def voronoi(towers, associated_point, bounding_box=bounding_box):
             vor_vertices.append(vor.vertices[ind])
         #print ('Associated point:', arr[i], '\n') 
         if towers[i][0] == associated_point[0] and towers[i][1] == associated_point[1]:
-            #fig = sp.spatial.voronoi_plot_2d(vor, show_vertices=True)
-            #plt.show()
 
             return (vor, vor_vertices)
 

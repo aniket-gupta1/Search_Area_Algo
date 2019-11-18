@@ -4,12 +4,14 @@ import dronekit
 import math
 import time
 import sys
+from threading import *
 from GraphClass import Graph
 import itertools
 from pymavlink import mavutil
 from uncertainity_functions import contains_point
 from generate_voronoi import voronoi
 from dividesearcharea import rectangle_mid_point
+import logging
 
 bounding_box_helper = np.array(rectangle_mid_point(1000, 1000, 28.753300, 77.116118, 0))
 x_min =  bounding_box_helper[0][0]
@@ -19,10 +21,11 @@ y_min = bounding_box_helper[0][1]
 bounding_box = np.array([x_min,x_max,y_min,y_max])
 
 M = 10201
+logging.basicConfig(level=logging.DEBUG)
 
-class UAVSwarmBot:
+class UAVSwarmBot(Thread):
 	
-	def __init__(self, s, init_pmap=np.array([0.5 for i in range(10000)]), network_range = 50000, num_uavs = 20, p=0.9, q=0.3):
+	def __init__(self, s, init_pmap=np.array([0.5 for i in range(M)]), network_range = 50000, num_uavs = 10, p=0.9, q=0.3):
 		"""
 		 location: a list of x and y coordinate of UAV initially, converted to a position vector (numpy)
 		 Q: list/hashmap of P transforms of all cells in the region
@@ -35,6 +38,7 @@ class UAVSwarmBot:
 		 CM: centroid of voronoid region vector
 		 density: list of densities of each cell
 		"""
+		super(UAVSwarmBot, self).__init__()
 		self.vehicle = dronekit.connect(s)
 		self.g_list = []
 		self.p = p 
@@ -45,8 +49,8 @@ class UAVSwarmBot:
 		self.num_uavs = num_uavs
 		self.neighbors = Graph(num_uavs) # or just use list for simplicity
 		self.__velocity = np.zeros(2)
-		self.__dij = np.zeros((num_uavs, num_uavs))
-		self.Kn = 2
+		self.__dij = np.zeros((num_uavs, num_uavs)) 
+		self.Kn = 0.002
 		self.Ku = 1
 		self.__location = [self.vehicle.location.global_frame.lat,self.vehicle.location.global_frame.lon]
 		self.__voronoi_part_map = []
@@ -56,8 +60,11 @@ class UAVSwarmBot:
 		self.wplist=[]
 		self.id=int(self.vehicle.parameters['SYSID_THISMAV'])
 		self.UAVID = 0
+		
 
-
+	def run(self):
+		logging.debug('running' + ' ' + str(self.UAVID))
+		
 	def __str__(self):
 		return "UAVSwarmBot is the Probability Map based control law generation for an individual UAV."
 
@@ -103,16 +110,18 @@ class UAVSwarmBot:
 		returns voronoi point list
 		"""
 		return self.__voronoi_part_map
+			
 
-	def update_density(self):
-		for i in range(M):
-			self.density[i] = (math.exp(-self.Kn*abs(self.__Q[i])))
-		
+	def fusion_update(self, friend_Q_list):
+		"""
+		"""
+		for j in range(self.num_uavs):
+			if self.neighbors.containsEdge(self.UAVID, j):
+				self.__Q = self.__dij[self.UAVID][j]*friend_Q_list[j]   # multiplied whole matrix
+
 	def update_Q(self, Zk_list):
 		"""
-		changes the value of Q list
 		"""
-
 		for i in range(M):
 			if Zk_list[i] == 1:
 				v = math.log(self.q/self.p)
@@ -123,34 +132,27 @@ class UAVSwarmBot:
 
 			self.__Q[i] += v
 
-	def fusion_update(self, friend_Q_list):
-		"""
-		"""
-		for j in range(self.num_uavs):
-			if self.neighbors.containsEdge(self.UAVID, j):
-				for i in range(M):
-
-					self.__Q[i] = self.__dij[self.UAVID][j]*friend_Q_list[j][i]
-
-	def update_A(self, area_cell, M):
+	def update_A_CM(self, area_cell, M, Zk_list):
 		"""
 		g_list: list of coordinates of centre of all points
 		"""
 		self.A = 0
-		for i in range(M):
-			if contains_point(self.g_list[i], self.__voronoi_part_map):
-				self.A += area_cell*self.density[i]
-
-	def update_CM(self, area_cell, M):
 		self.CM = [0, 0]
 		flag = 0
 		for i in range(M):
+			self.density[i] = math.exp(-self.Kn*abs(self.__Q[i]))
+
 			if contains_point(self.g_list[i], self.__voronoi_part_map):
-				self.CM[0]+=((1/self.A)*(area_cell)*(self.density[i]))*self.g_list[i][0]
-				self.CM[1]+=((1/self.A)*(area_cell)*(self.density[i]))*self.g_list[i][1]
+				self.A += area_cell*self.density[i]
+				self.CM[0]+= (area_cell)*(self.density[i])*self.g_list[i][0]
+				self.CM[1]+= (area_cell)*(self.density[i])*self.g_list[i][1]
 				flag = 1
+
 		if flag == 0:
 			print("correct voronoi map")
+		else:
+			self.CM[0] = self.CM[0]/self.A
+			self.CM[1] = self.CM[1]/self.A			
 
 	def turn(self):
 		if (self.__location[0] < bounding_box[0] or self.__location[0] > bounding_box[1]) and (self.__location[1] < bounding_box[2] or self.__location[1] > bounding_box[3]):
@@ -185,16 +187,19 @@ class UAVSwarmBot:
 		"""
 		changes the velocity vector of the UAV
 		"""
-		heuristic = self.forward_heuristic()
-		vel_x = Ku*(self.CM[0] - self.__location[0]) + heuristic[0]*100
+		#heuristic = self.forward_heuristic()
+		vel_x = Ku*(self.CM[0] - self.__location[0])
 		vel_y = Ku*(self.CM[1] - self.__location[1]) 
 		new_vel = [vel_x, vel_y]
 		
-		mynorm = np.linalg.norm(new_vel)
+		if self.CM[0] > 0 and self.CM[1]>0:
+			mynorm = np.linalg.norm(new_vel)
 
-		if mynorm > 5:
-			new_vel[0] = new_vel[0]*5/mynorm
-			new_vel[1] = new_vel[1]*5/mynorm
+			if mynorm > 5:
+				new_vel[0] = new_vel[0]*5/mynorm
+				new_vel[1] = new_vel[1]*5/mynorm
+		else:
+			new_vel = [5, 0]
 
 		self.__velocity = new_vel
 
@@ -322,23 +327,23 @@ class UAVSwarmBot:
 			time.sleep(1)
 
 
-		print ("Arming motors",self.id)
+		print("Arming motors",self.id)
 
 		# Copter should arm in GUIDED mode
 		self.vehicle.mode = dronekit.VehicleMode("GUIDED")
 		self.vehicle.armed = True
 
 		while not self.vehicle.armed:
-			print (" Waiting for arming...",self.id)
+			print(" Waiting for arming...",self.id)
 			time.sleep(1)
 
-		print ("Taking off!",self.id)
+		print("Taking off!",self.id)
 		self.vehicle.simple_takeoff(aTargetAltitude)
 
 		while True:
-			print (" Altitude: ", self.vehicle.location.global_relative_frame.alt)      
+			print(" Altitude: ", self.vehicle.location.global_relative_frame.alt)      
 			if self.vehicle.location.global_relative_frame.alt>=aTargetAltitude*0.90: 
-				print ("Reached target altitude",self.id)
+				print("Reached target altitude",self.id)
 				break
 			time.sleep(1)
 
@@ -355,7 +360,3 @@ class UAVSwarmBot:
 
 	def recievedata(self):
 		pass
-
-
-
-

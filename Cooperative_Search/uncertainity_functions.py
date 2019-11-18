@@ -4,7 +4,7 @@ import numpy as np
 from math import *
 import time
 
-def average_uncertainity(N, M, UAV_list, avg_uncertainity_deviation=0.4):
+def average_uncertainity(N, M, UAV_list, avg_uncertainity_deviation=0):
     """
 
     """
@@ -13,9 +13,9 @@ def average_uncertainity(N, M, UAV_list, avg_uncertainity_deviation=0.4):
     for i in range(N):
         for j in range(M):
             avg += abs(UAV_list[i].density[j]-avg_uncertainity_deviation)
-    t2 = time.time()
-
-    return avg
+    avg = avg/(N*M)
+    print(avg)
+    return (avg)
 
 
 def contains_point(point, voro_points):

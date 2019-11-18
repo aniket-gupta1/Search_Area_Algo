@@ -2,6 +2,7 @@ from scipy.spatial import Voronoi
 import numpy as np 
 import math
 import time
+from threading import *
 import sys
 from GraphClass import Graph
 import itertools
@@ -11,14 +12,15 @@ from dividesearcharea import coordinates, takeobservations, rectangle_mid_point
 from uncertainity_functions import average_uncertainity, contains_point, initial_wps_func, final_wps_func
 from main import colab_search
 from generate_voronoi import voronoi
+import logging
 
 
 m = 1000
 n = 1000
-
-
+N=10
+logging.basicConfig(level=logging.DEBUG)
 centre_wp = [28.753300, 77.116118] # enter coordinate
- 
+
 # make uav list and arm and take off
 # should return a list of centre coordinates
 target_list = np.array([np.array([28.755413308079383, 77.1133998428576]), np.array([28.756762289717177, 77.11545145223369]),
@@ -35,23 +37,39 @@ np.array([28.75118649741841, 77.11104048765779]), np.array([28.757122017973817, 
 
 p = rectangle_mid_point(1000, 1000, 28.753300, 77.116118, 0)
 cell_list = coordinates(m, n, p[0][0], p[0][1], 10, 10, 0)
-temp = initial_wps_func(20, 28.749498, 77.111593, 0, 900, 900)
+temp = initial_wps_func(N, 28.749498, 77.111593, 0, 900, 900)
 
 points = []
 for pts in temp:
     pts = dronekit.LocationGlobalRelative(pts[0], pts[1], 35)
     points.append(pts)
 
-vehicle = list()
-for i in range(20):
-    vehicle.append(UAVSwarmBot("127.0.0.1:" + str(14550 + i*10)))
-    vehicle[i].g_list = cell_list
-    vehicle[i].UAVID += i
 
-for i in range(20):
-    vehicle[i].arm_and_takeoff(5)
-    vehicle[i].vehicle.simple_goto(points[i])
+UAVlocdict = dict()
+vehicle = list() # list of different thread UAVs
+for i in range(N):
+    UAVthread = UAVSwarmBot("127.0.0.1:" + str(14550 + i*10))
+    UAVthread.start()
+    vehicle.append(UAVthread)
+    UAVlocdict[i] = UAVthread
+    UAVthread.g_list = cell_list
+    UAVthread.UAVID += i
+    UAVthread.arm_and_takeoff(5)
+    UAVthread.vehicle.simple_goto(points[i])
+    time.sleep(1)
 
-time.sleep(60)
-print(len(cell_list))
-colab_search(vehicle, 20, len(cell_list), 100, cell_list)
+M = len(cell_list)
+logging.debug("Starting search...")
+time.sleep(20)
+while True:
+    if average_uncertainity(N, M, UAVlocdict) <= 0.005:
+        break
+
+    for i in range(N):
+        colab_search(vehicle[i], N, M, 100, cell_list, UAVlocdict)
+
+for i in range(N):
+    vehicle[i].join()
+
+for UAV2 in UAVlocdict:
+    logging.debug("UAV: ", str(UAVlocdict[UAV2].getlocation()))

@@ -10,6 +10,9 @@ import dronekit
 from dividesearcharea import coordinates, takeobservations, rectangle_mid_point
 from uncertainity_functions import average_uncertainity, contains_point
 from generate_voronoi import voronoi
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 target_list = np.array([np.array([28.755413308079383, 77.1133998428576]), np.array([28.756762289717177, 77.11545145223369]),
 np.array([28.754603915780642, 77.12099079754887]), np.array([28.75460391948231, 77.1111430725439]),np.array([28.752355612035693, 77.12027272985]), np.array([28.752895205307713, 77.11945208609963]),
@@ -23,18 +26,18 @@ np.array([28.75640255960931, 77.11934951004814]), np.array([28.75334486688188, 7
 np.array([28.755862966722887, 77.11914434911056 ]), np.array([28.75316500148104, 77.12027272985]),np.array([28.7539743939341, 77.11227145328346]), np.array([28.754513985278184, 77.11657983297322]),
 np.array([28.75118649741841, 77.11104048765779]), np.array([28.757122017973817, 77.11647725692173])])
 
+# contains the Z_list for each UAV at each iteration
+UAVdict = dict()
 
-
-def colab_search(UAVs, N, M, area_cell, g_list):
+def colab_search(UAV, N, M, area_cell, g_list, UAVloclist):
 	"""
 	UAVs: list of UAV objects
 	N: Total Number of UAVs
 	M: total number of cell centres
 	"""
-	print("search started")
 
 
-	while True:
+	#while True:
 		# create partition for each UAV
 		# update_Q for each UAV
 		# transmit_Q for each UAV
@@ -44,92 +47,63 @@ def colab_search(UAVs, N, M, area_cell, g_list):
 		# generate control law for each UAV
 		# time.sleep(1)
 		
-		if average_uncertainity(N,M,UAVs) <= 0.3:
-			break
-		
+		#if average_uncertainity(N,M,UAVloclist) <= 0.3:
+			#break
 
-		friend_points = np.zeros((N,2))
-		UAVdict = dict()
-		# contains the Z_list for each UAV at each iteration
-
-		# some basic initializations
-		for UAV in UAVs:
-			UAVdict[UAV.UAVID] = np.zeros(M)
-		
-		for UAV in UAVs:
-
-			# getneighbors will return adjecency matrix of the graph class
-			t = time.time()
-			for friends in UAVs:
-				UAV.connect_to_neighbor(friends)
-
-			neighbormatrix = UAV.getneighbors()[UAV.UAVID]
-
-			for i in range(len(neighbormatrix)):
-				if neighbormatrix[i] == 1:
-					friend_points[i] = (UAVs[i].getlocation())
-
-			UAV.updatevoronoi(friend_points)
-
-			# take observations and append in Z_klist
-			# Z_klist = []
-
-			Z_klist = takeobservations(70, 30, UAV.getlocation()[0], UAV.getlocation()[1], UAV.heading(), 10, 10, target_list, UAV.g_list, M)
-
-			for i in range(M):
-				if Z_klist[i] == 1:
-					UAV.wplist.append(g_list[i])
-
-			# update self Q
-			UAV.update_Q(Z_klist)
-
+	friend_points = np.zeros((N,2))
 	
-			# transmit updated Q based on self measurement
-			# transmit and recieve on different threads
-			# for now instead of transmitting add to the dictionary
+	# some basic initializations
+	UAVdict[UAV.UAVID] = np.zeros(M)
 
-			UAVdict[UAV.UAVID] = Z_klist
+	# getneighbors will return adjecency matrix of the graph class
+	#for friends in UAVs:
+		# UAV.connect_to_neighbor(friends)
 
-			# for keys in dict get a multidimenstional list of friend data
-			# friend_Q_list = UAV.recievedata()
-
-			friend_Q_list = []
-			for key in UAVdict.keys():
-				friend_Q_list.append(UAVdict[key])
-
-
-			# fusion update
-
-			UAV.fusion_update(friend_Q_list)
-
-			# density update
-
-			UAV.update_density()
+	#neighbormatrix = UAV.getneighbors()[UAV.UAVID]
+	neighbormatrix = [1 for i in range(N)]
+	"""for i in range(len(neighbormatrix)):
+		if neighbormatrix[i] == 1:
+			friend_points[i] = (UAVs[i].getlocation())"""
 
 
-			# calculate A
-			UAV.update_A(area_cell, M)
+	for i in range(N):
+		x = UAVloclist[i].getlocation()
+		friend_points[i] = UAVloclist[i].getlocation()
+		
+	UAV.updatevoronoi(friend_points)
 
 
-			# calculate CM
+	# take observations and append in Z_klist
+	# Z_klist = []
+	Z_klist = takeobservations(70, 30, UAV.getlocation()[0], UAV.getlocation()[1], UAV.heading(), 10, 10, target_list, UAV.g_list, M)
 
-			UAV.update_CM(area_cell, M)
+
+	# update self Q
+	UAV.update_Q(Z_klist)
+
+	# transmit updated Q based on self measurement
+	# transmit and recieve on different threads
+	# for now instead of transmitting add to the dictionary
+
+	UAVdict[UAV.UAVID] = Z_klist
 
 
+	# for keys in dict get a multidimenstional list of friend data
+	# friend_Q_list = UAV.recievedata()
 
-			# update velocity using control law
-			UAV.update_velocity(1000)
-			t2 = time.time()
-			print(t2-t)
-			print("vel: ", UAV.getvel())
-			#print(UAV.getvel())
-
-			time.sleep(0.001)
-
-	for UAV in UAVs:
-		print("UAV: ", UAV.getlocation())
+	friend_Q_list = np.zeros(N)
+	for key in UAVdict.keys():
+		friend_Q_list[key] = UAVdict[key]
 
 
 
+	# fusion update
+	UAV.fusion_update(np.array(friend_Q_list))
 
+	# calculate A and CM using new density
+	UAV.update_A_CM(area_cell, M, Z_klist)
+	# update velocity using control law
+	UAV.update_velocity(1000)
+	#logging.debug(UAV.getvel())
 
+	time.sleep(0.001)

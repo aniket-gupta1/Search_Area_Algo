@@ -144,6 +144,7 @@ def takeobservations(fov_x,fov_y,lat,lon,heading, cell_width, cell_length, targe
             minindex = np.where(g_list == point)[0][0]
             print(minindex)
             Z_list[minindex] = 1
+
             #mindist = np.linalg.norm([g_list[0][0]-point[0], g_list[0][1]-point[1]])
             #minindex = 0
             #for i in range(M):
@@ -152,7 +153,6 @@ def takeobservations(fov_x,fov_y,lat,lon,heading, cell_width, cell_length, targe
                     #mindist = x
                     #minindex = i
             
-
     return Z_list
 
 def rectangle_mid_point(m,n,lat,lon,heading):
