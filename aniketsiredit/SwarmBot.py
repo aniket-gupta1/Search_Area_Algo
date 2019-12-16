@@ -200,6 +200,8 @@ class SwarmBot:
     def generate_mopso_velocity(self, timer, finalwaypoints, num, TMAX, wstart, wend, GlobalUavData):
 
         vel = [0, 0, 0]
+        print("generating velocity,,,")
+        print("...")
         
         R1 = (random.randrange(0,100,10)/100)
         R2 = (random.randrange(0,100,10)/100)
@@ -207,22 +209,26 @@ class SwarmBot:
         w = (wstart - (wstart - wend)*((timer / TMAX)**2))
 
         if self.__gbestloc[0] and not self.__bestlocation[0]:
+            print("gbest something and best location nothing")
             vel[0] = w*(self.__velocity[0]) + R3*1000*(finalwaypoints[self.id-1][0]-self.get_pos()[0]) + R2*1000*(self.__gbestloc[0]-self.get_pos()[0]) 
             vel[2]=0
             vel[1] = w*(self.__velocity[1]) + R3*1000*(finalwaypoints[self.id-1][1]-self.get_pos()[1]) + R2*1000*(self.__gbestloc[1]-self.get_pos()[1]) 
 
-        elif not self.__gbestloc[0] and not self.__bestlocation[0]:
+        elif not self.__gbestloc[0] and self.__bestlocation[0]:
             #print(R3*1000*(finalwaypoints[self.id-1][0]-self.get_pos()[0]),R2*1000*(self.__gbest[0]-self.get_pos()[0]),R1*1000*(self.__bestlocation[1]-self.get_pos()[1]) )
+            print("both nothiung")
             vel[0] = w*(self.__velocity[0]) + R3*1000*(finalwaypoints[self.id-1][0]-self.get_pos()[0]) + R1*1000*(self.__bestlocation[0]-self.get_pos()[0])
             vel[2]=0
             vel[1] = w*(self.__velocity[1]) + R3*1000*(finalwaypoints[self.id-1][1]-self.get_pos()[1]) + R1*1000*(self.__bestlocation[1]-self.get_pos()[1])
 
         elif not self.__bestlocation[0] and not self.__gbestloc[0]:
+            print("gbest nothing and best location something")
             vel[0] = w*(self.__velocity[0]) + R3*1000*(finalwaypoints[self.id-1][0]-self.get_pos()[0])  
             vel[2]=0
             vel[1] = w*(self.__velocity[1]) + R3*1000*(finalwaypoints[self.id-1][1]-self.get_pos()[1]) 
         else:
-            vel[0] = w*(self.__velocity[0]) + R3*1000*(finalwaypoints[self.id-1][0]-self.get_pos()[0]) + R2*1000*(self.__gbest[0]-self.get_pos()[0]) + R1*1000*(self.__bestlocation[0]-self.get_pos()[0])
+            print("gbest something and best location nothing")
+            vel[0] = w*(self.__velocity[0]) + R3*1000*(finalwaypoints[self.id-1][0]-self.get_pos()[0]) + R2*1000*(self.__gbestloc[0]-self.get_pos()[0]) + R1*1000*(self.__bestlocation[0]-self.get_pos()[0])
             vel[2]=0
             vel[1] = w*(self.__velocity[1]) + R3*1000*(finalwaypoints[self.id-1][1]-self.get_pos()[1]) + R2*1000*(self.__gbestloc[1]-self.get_pos()[1]) + R1*1000*(self.__bestlocation[1]-self.get_pos()[1])
 
@@ -237,25 +243,23 @@ class SwarmBot:
         """
         """
         for friend in GlobalUavData:
-            print(self.id,friend)
             if self.id != friend:
-
-                friend_location = GlobalUavData[self.id][str(friend)]['GPS']
+                friend_location = GlobalUavData[friend]['GPS']
                 current_location = self.get_pos()
+                if len(friend_location):
+                    dist = distance(friend_location[0], friend_location[1], current_location[0], current_location[1])
 
-                dist = distance(friend_location[0], friend_location[1], current_location[0], current_location[1])
+                    if dist < 30:
+                        print(dist, self.id, friend)
 
-                if dist < 30:
-                    print(dist, self.id, friend)
+                    if dist < 7:
+                        print("inter uav collision aviodance triggered")
+                        vel[0] += 10000*(-friend_location[0] + current_location[0])
+                        vel[1] += 10000*(-friend_location[1] + current_location[1])
+                        vel[2] = 0
 
-                if dist < 7:
-                    print("inter uav collision aviodance triggered")
-                    vel[0] += 10000*(-friend_location[0] + current_location[0])
-                    vel[1] += 10000*(-friend_location[1] + current_location[1])
-                    vel[2] = 0
-
-                if dist < 4:
-                    print("collision")
+                    if dist < 4:
+                        print("collision")
 
             return vel
 
@@ -276,10 +280,9 @@ class SwarmBot:
         g_best = [(self.__gbest, self.__gbestloc)]
         p_best = [(self.__pbest, self.__bestlocation)]    
         newloc = [self.__bestlocation]
-        for friend in nearestuav: 
-            friend = str(friend)
-            g_best.append((GlobalUavData[self.id][friend]["G"], GlobalUavData[self.id][friend]["gbestloc"]))
-            p_best.append((GlobalUavData[self.id][friend]["P"], GlobalUavData[self.id][friend]["bestloc"]))
+        for friend in nearestuav:
+            g_best.append((GlobalUavData[friend]["G"], GlobalUavData[friend]["gbestloc"]))
+            p_best.append((GlobalUavData[friend]["P"], GlobalUavData[friend]["bestloc"]))
 
         max_gfriend = max(g_best)
         max_pfriend = max(p_best)
@@ -321,11 +324,15 @@ class SwarmBot:
         friend_distances = []
         current_position = self.get_pos()
         for friends in GlobalUavData: 
-            friends = str(friends)
-            friend_location = GlobalUavData[self.id][friends]["GPS"] 
-            friend_distances.append((distance(current_position[0],current_position[1],friend_location[0],friend_location[1]), friends))
+            friend_location = GlobalUavData[friends]["GPS"] 
+            try:
+                friend_distances.append((distance(current_position[0],current_position[1],friend_location[0],friend_location[1]), friends))
+            except:
+                print("friend location is empty")
+                continue
 
         friend_distances.sort()
+        pso_friends = []
         for element in friend_distances[:5]:
             pso_friends.append(element[1])
 
@@ -336,8 +343,8 @@ class SwarmBot:
         """
         vel = [0,0,0]
         curr_vel = self.__velocity
-        vel[0] = 100000*(self.__droplocation[0]-(vehicle[j].get_pos()[0])) 
-        vel[1] = 100000*((self.__droplocation[1])-(vehicle[j].get_pos()[1]))
+        vel[0] = 100000*(self.__droplocation[0]-(self.get_pos()[0])) 
+        vel[1] = 100000*((self.__droplocation[1])-(self.get_pos()[1]))
         vel[2] = 0
         vel = self.inter_uav_collsion(vel,GlobalUavData)
         vc = inside_circle(vel)
@@ -346,12 +353,16 @@ class SwarmBot:
 
 
     def update_pbest(self):
-        max_temp = max(self.__personal_humans, key=lambda a: self.__personal_humans[2])
-        self.__pbest = max_temp[2]
-        self.__bestlocation = [max_temp[0], max_temp[1]]
+        try:
+            y = self.__personal_humans
+            max_temp = max(y, key=lambda y: y[2])
+            self.__pbest = max_temp[2]
+            self.__bestlocation = [max_temp[0], max_temp[1]]
+        except:
+            print("personal human list is empty")
 
 
-    def payload_drop(self, GlobalUavData, loc):  
+    def payload_drop(self, GlobalUavData, loc, fol):  
         """
         """
         print("dropping payload...")
@@ -359,29 +370,32 @@ class SwarmBot:
         friend_distances = {i:sys.maxsize for i in range(1,1+len(GlobalUavData))}
         temp = []
         for friend in GlobalUavData:
-            friend = str(friend)
-            friend_location = GlobalUavData[self.id][friend]["GPS"]
-            dist = distance(loc[0], loc[1], friend_location[0], friend_location[1])
-            if self.__payload == 1 : # set flag
-                if dist <= 2.5*fol:
-                    friend_distances[friend] = dist
-            if self.__payload ==0:
-                if dist <=2.5*fol and distance(self__payload[0],self__payload[1],self.get_pos()[0],self.get_pos()[1])>distance(loc[0], loc[1], self.get_pos()[0],self.get_pos()[1]):
-                    friend_distances[friend] = dist
-                
+            friend_location = GlobalUavData[friend]["GPS"]
+            if len(friend_location) > 0:
+                dist = distance(loc[0], loc[1], friend_location[0], friend_location[1])
+                if self.__payload == 1 : # set flag
+                    if dist <= 2.5*fol:
+                        friend_distances[friend] = dist
+                if self.__payload ==0:
+                    if dist <=2.5*fol and distance(self.__droplocation[0],self.__droplocation[1],self.get_pos()[0],self.get_pos()[1])>distance(loc[0], loc[1], self.get_pos()[0],self.get_pos()[1]):
+                        friend_distances[friend] = dist
+                    
 
-        min_dist = min(friend_distances.values())
-        if min_dist != sys.maxsize:            
-            critical_key = min(friend_distances.items(), key=lambda x: friend_distances.items()[1])[0]
-            if critical_key == self.id:
-                # drop payload using the current uav
-                if self.__payload == 0:
-                    self.__droplocation = [loc[0], loc[1], 5]
-                else:
-                    newloc=self.__droplocation
-                    self.__droplocation = [loc[0], loc[1], 5]
-
-                    self.payload_drop(GlobalUavData,newloc)
+            min_dist = min(friend_distances.values())
+            if min_dist != sys.maxsize:   
+                y = list(friend_distances.items())         
+                critical_key = min(y, key =lambda y: y[1])[0]
+                if critical_key == self.id:
+                    # drop payload using the current uav
+                    if self.__payload == 1:
+                        self.__droplocation = [loc[0], loc[1], 5]
+                        self.__payload = 0
+                    else:
+                        newloc = self.__droplocation
+                        self.__droplocation = [loc[0], loc[1], 5]
+                        self.payload_drop(GlobalUavData,newloc,fol)
+            else:
+                self.__futurepayload.append(loc)
 
 
 

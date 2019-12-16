@@ -46,16 +46,15 @@ for i in range(n):
     address = '127.0.0.'+str(i+1)
     receiving_sock.append(create_and_bind_uav_ports((address, local_port + Id)))
 
-GlobalUavData = {i :{"GPS":[], "Humans":[], "G":0, "P":0, "bestloc":[], "gbestloc":[]} for i in range(1, n+1)}
 
 detected_humans = []
 
 uav = SwarmBot(self_connection_string)
 uav.arm_and_takeoff(5)
+
 uav.update_pos([Final_waypoints[uav.id-1][0], Final_waypoints[uav.id-1][1],5],5)
 wstart=0.9
 wend=0.4
-
 timer = 0
 #5loooopy=[[28.766507012972816, 77.11291207446766, 0.83], [28.76868516219936, 77.1120458244287, 0.88], [28.77060317577803, 77.11739619464721, 0.8], [28.76893697227221, 77.11173803816813, 0.78], [28.770603175810493, 77.1169652858881, 0.73], [28.76902690445293, 77.11147129007564, 0.82], [28.770998877314007, 77.11700632481754, 0.82], [28.770747067262796, 77.11702684428225, 0.82], [28.768649189370684, 77.11157388549583, 0.74], [28.770789931596337, 77.11099568899553, 0.72], [28.770735972250513, 77.11165231100438, 0.99], [28.769008917994515, 77.11182011450428, 0.98], [28.77046617578111, 77.11148815550217, 0.86], [28.770495257183768, 77.11741671411194, 0.73], [28.771142768749314, 77.11729359732361, 0.91], [28.770987782327982, 77.11128296112439, 0.9], [28.770502148674723, 77.11109828618439, 0.75], [28.77056720295554, 77.11684216909978, 0.95], [28.77108880946069, 77.117191, 0.86], [28.766237216484864, 77.1129941489352, 0.86]]
 
@@ -76,6 +75,7 @@ loooopy=[[28.767234337879614, 77.11200837647061, 0.95], [28.76503706656088, 77.1
 #1loooopy=[[28.76405159075026, 77.11329134780544, 0.72], [28.768134510831977, 77.11341445650442, 0.95], [28.768602158091763, 77.11308616664049, 0.77], [28.771138244596663, 77.11870813056039, 0.71], [28.766533718653275, 77.10970067741864, 0.88], [28.770940394084693, 77.11550730438701, 0.92], [28.77067059760129, 77.11552782250351, 0.73], [28.765562451062106, 77.11310668475697, 0.75], [28.771497973809716, 77.11113694557336, 0.8], [28.765742314984234, 77.11840035881295, 0.92], [28.766371840824515, 77.10890047087528, 0.82], [28.766461772680415, 77.112942539825, 0.91], [28.770041072291605, 77.11798999648303, 0.8], [28.77246924104671, 77.11242958691261, 0.98], [28.769969126624886, 77.11716927182319, 0.76], [28.76487896623174, 77.11854398562842, 0.87], [28.766695596155646, 77.11483020654263, 0.94], [28.766893447141076, 77.11175248906824, 0.93], [28.768997859793167, 77.11050088396198, 0.9], [28.77225340406693, 77.10970067741864, 0.85], [28.765094803565653, 77.1165742464448, 0.88], [28.771875688324258, 77.11856450374492, 0.95], [28.766263922086463, 77.11082917382592, 0.78], [28.76550849146879, 77.11704616312421, 0.88], [28.764627156856452, 77.10959808683616, 0.74], [28.768386321207917, 77.10908513392376, 0.96], [28.765562450658468, 77.11846191316243, 0.73], [28.770346841960727, 77.11370171013536, 0.84], [28.767540958700415, 77.11171145283525, 0.71], [28.77086844849695, 77.11364015578587, 0.97]]
 #byhandloooopy=[[28.763781793847798, 77.11887227549236, 0.97], [28.765148762948655, 77.11542523192102, 0.97], [28.766569691533, 77.10949549625367, 0.83], [28.76451923802555, 77.11275787677654, 0.77], [28.769807249187487, 77.11117798180635, 0.8], [28.769033832221353, 77.11628699281385, 0.71], [28.766299894596486, 77.11552782250351, 0.98], [28.771965620636482, 77.1165537283283, 0.86], [28.772001593813062, 77.11240906879613, 0.72], [28.769915167362598, 77.11671787326027, 0.79], [28.766084057721976, 77.11140368108781, 0.91], [28.768530212425183, 77.11226544198064, 0.86], [28.76826041576391, 77.11464554349419, 0.87], [28.767397067275922, 77.11128057238882, 0.89], [28.766965392503007, 77.1166152826778, 0.89], [28.763691862318232, 77.11050088396198, 0.94], [28.76509480342492, 77.11844139504593, 0.96], [28.770958380383764, 77.11727186240567, 0.91], [28.767900687517482, 77.1093929056712, 0.98], [28.764357360260213, 77.11111642745686, 0.99], [28.767918673583104, 77.11425569928075, 0.7], [28.764896952625204, 77.11905693854084, 0.73], [28.771497973699876, 77.11259373184457, 0.73], [28.769627384968402, 77.10982378611762, 0.98], [28.766803514994393, 77.11156782601977, 0.82], [28.76617398994594, 77.11056243831148, 0.76], [28.7641595092084, 77.1150764239406, 0.75], [28.765436545696996, 77.1176206703861, 0.89], [28.77013100481559, 77.11316823910646, 0.75], [28.771749783857725, 77.11115746368985, 0.97]]
 
+GlobalUavData = {i :{"GPS":[], "Humans":[], "G":0, "P":0, "bestloc":[], "gbestloc":[]} for i in range(1, n+1)}
 
 while True:
     if timer == TMAX or distance(Final_waypoints[uav.id-1][0], Final_waypoints[uav.id-1][1], uav.get_pos()[0],uav.get_pos()[1])<5:
@@ -90,40 +90,42 @@ while True:
         point = Point(i[0], i[1])
         polygon = Polygon([(a1[0],a1[1]), (a2[0],a2[1]), (a3[0],a3[1]), (a4[0],a4[1])])
         if polygon.contains(point):
-
             uav.update_PersonalHumans(i)
             detected_humans.append(i)
 
-    data_to_send = {uav.id:{"GPS":uav.get_pos(), "Humans":detected_humans, "G":uav._SwarmBot__gbest, "P":uav._SwarmBot__pbest, "bestloc":uav._SwarmBot__bestlocation, "gbestloc":uav._SwarmBot__gbestloc}}
+    data_to_send = {"GPS":uav.get_pos(), "Humans":detected_humans, "G":uav.get_gbest(), "P":uav.get_pbest(), "bestloc":uav.get_bestlocation(), "gbestloc":uav.get_gbestloc()}
 
     # Code for sending the data
     for i in range(n):
+        print("sending data")
         send_data(sending_sock[i], local_address, local_port + i, data_to_send)
 
     # Code for receiving the data
     for i in range(n):
+        print("recieving data")
         GlobalUavData[i+1] = recv_data(receiving_sock[i])
         print(GlobalUavData[i+1])
 
     # shared human list update
-    shared_human_list = set()
+    shared_human_list = list()
     for i in GlobalUavData:
-        try:
-            for humans in GlobalUavData[i]["Humans"]:
-                shared_human_list.add(humans)   # multiple detection
-        except:
-            print("Human list empty!")
-            continue
+        for humans in GlobalUavData[i]["Humans"]:
+            if humans not in shared_human_list:
+                print(humans)
+                shared_human_list.append(humans)   # multiple detection
 
-        shared_human_list = list(shared_human_list)
+    if not len(shared_human_list):
+        print("No Human detected yet")
+    else:
+        print("shared human list: ", shared_human_list)
+
 
     # gbest and p best updation
     for humans in shared_human_list:
-        nearestuav = uav.minimumdist(GlobalUavData)
+        nearestuav = uav.minimumdistance(GlobalUavData)
         uav.update_pbest() 
         uav.updategbest(GlobalUavData, nearestuav)
-
-        uav.payload_drop(GlobalUavData, humans)
+        uav.payload_drop(GlobalUavData, humans, fol)
 
     
     # check uav state
@@ -134,10 +136,17 @@ while True:
         print(vel)
 
     else:
-        vel = uav.generate_mopso_velocity(timer, Final_waypoints, n, TMAX, wstart, wend, GlobalUavData)
-        uav.update_vel(vel)
-        print(vel)
-        uav.change_gpbest(Final_waypoints, p1, p4)
+        try:
+            vel = uav.generate_mopso_velocity(timer, Final_waypoints, n, TMAX, wstart, wend, GlobalUavData)
+            uav.update_vel(vel)
+            print(vel)
+        except:
+            print("err in vel")
+
+        try:
+            uav.change_gpbest(Final_waypoints, p1, p4)
+        except:
+            print("err in gpbest")
 
     timer += 1
     time.sleep(1)

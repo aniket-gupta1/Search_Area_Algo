@@ -100,6 +100,7 @@ def finalwaypoins(n,p1,p2,p3,p4,x):
     return b
 
 def inside_circle(vel):
+        print(vel)
         x=vel[0]
         y=vel[1]
         vc=[]
@@ -116,9 +117,17 @@ def inside_circle(vel):
             vc.append(i.y)
             vc.append(0)
         elif (x*x)+(y*y)-(4)<=0:
-            vc.append(2*cos(atan(y/x)))
-            vc.append(2*sin(atan(y/x)))
-            vc.append(0)
+            if x!=0:
+
+                vc.append(4*cos(atan(y/x)))
+                vc.append(4*sin(atan(y/x)))
+                vc.append(0)
+            else:
+                vc.append(4*sin(atan(x/y)))
+                vc.append(4*cos(atan(x/y)))
+                vc.append(0)
+
+
 
         return vc
 
@@ -144,13 +153,14 @@ def send_data(sock, address, port, data):
     sock.sendto(data_json, (address, port))
 
 def recv_data(sock):
+    
     try:
-        data = sock.recv(200)
+        data = sock.recv(1024)  # timing out!!, not recieving from anyone
         data = json.loads(data.decode('utf-8'))
         return data
     except:
         print("Exception occured in recv_data in helper functions file ")
-        return None
+        return {"GPS":[], "Humans":[], "G":0, "P":0, "bestloc":[], "gbestloc":[]}
 
 
 
