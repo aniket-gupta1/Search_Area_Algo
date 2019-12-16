@@ -9,8 +9,9 @@ import random
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 from shapely.geometry import LineString
-from helper import distance, inside_circle, finalwaypoints, bearing, p1, p4
+from helper import distance, inside_circle, finalwaypoins, bearing
 import sys
+import socket
 
 class SwarmBot:
 
@@ -42,12 +43,13 @@ class SwarmBot:
         self.__futurepayload = []
 
 
+
     def get_pos(self):
         """
         returns: current position of SwarmBot object
         """
         self.__pos= [self.vehicle.location.global_frame.lat,self.vehicle.location.global_frame.lon]
-        return self.pos
+        return self.__pos
 
     
     def get_vel(self):
@@ -209,13 +211,13 @@ class SwarmBot:
             vel[2]=0
             vel[1] = w*(self.__velocity[1]) + R3*1000*(finalwaypoints[self.id-1][1]-self.get_pos()[1]) + R2*1000*(self.__gbestloc[1]-self.get_pos()[1]) 
 
-        elif not self.__gbest[0] and not self.__bestlocation[0]:
+        elif not self.__gbestloc[0] and not self.__bestlocation[0]:
             #print(R3*1000*(finalwaypoints[self.id-1][0]-self.get_pos()[0]),R2*1000*(self.__gbest[0]-self.get_pos()[0]),R1*1000*(self.__bestlocation[1]-self.get_pos()[1]) )
             vel[0] = w*(self.__velocity[0]) + R3*1000*(finalwaypoints[self.id-1][0]-self.get_pos()[0]) + R1*1000*(self.__bestlocation[0]-self.get_pos()[0])
             vel[2]=0
             vel[1] = w*(self.__velocity[1]) + R3*1000*(finalwaypoints[self.id-1][1]-self.get_pos()[1]) + R1*1000*(self.__bestlocation[1]-self.get_pos()[1])
 
-        elif not self.__bestlocation[0] and not self.__gbest[0]:
+        elif not self.__bestlocation[0] and not self.__gbestloc[0]:
             vel[0] = w*(self.__velocity[0]) + R3*1000*(finalwaypoints[self.id-1][0]-self.get_pos()[0])  
             vel[2]=0
             vel[1] = w*(self.__velocity[1]) + R3*1000*(finalwaypoints[self.id-1][1]-self.get_pos()[1]) 
@@ -231,7 +233,7 @@ class SwarmBot:
         return vmopso
 
 
-    def inter_uav_collsion(self, neighbor_GPS, vel):
+    def inter_uav_collsion(self, vel):
         """
         """
 
@@ -350,22 +352,32 @@ class SwarmBot:
         """
         print("dropping payload...")
         print("...")
-        friend_distances = {i:sys.maxsize for i in range(1, len(GlobalUavData)+1)}
+        friend_distances = {i:sys.maxsize for i in range(1,1+len(GlobalUavData))}
         temp = []
         for friend in GlobalUavData:
             friend_location = GlobalUavData[friend]["GPS"]
             dist = distance(loc[0], loc[1], friend_location[0], friend_location[1])
-            if self.__payload == 1 or self.__payload == 0: # set flag
+            if self.__payload == 1 : # set flag
                 if dist <= 2.5*fol:
                     friend_distances[friend] = dist
+            if self.__payload ==0:
+                if dist <=2.5*fol and distance(self__payload[0],self__payload[1],self.get_pos()[0],self.get_pos()[1])>distance(loc[0], loc[1], self.get_pos()[0],self.get_pos()[1]):
+                    friend_distances[friend] = dist
+                
 
         min_dist = min(friend_distances.values())
         if min_dist != sys.maxsize:            
             critical_key = min(friend_distances.items(), key=lambda x: friend_distances.items()[1])[0]
             if critical_key == self.id:
                 # drop payload using the current uav
-                self.__payload = 0
-                self.__droplocation = [loc[0], loc[1], 5]
+                if self.__payload == 0:
+                    self.__droplocation = [loc[0], loc[1], 5]
+                else:
+                    newloc=self.__droplocation
+                    self.__droplocation = [loc[0], loc[1], 5]
+
+                    self.payload_drop(GlobalUavData,newloc)
+
 
 
     """def probablityfn(self):
@@ -394,13 +406,12 @@ class SwarmBot:
         for i in range(num):
             dp_array[]"""
 
-
-
-
+    ## Function to transmit the necessary data to other UAVs
     def transmitdata(self):
         pass
 
 
+    ## Function to receive the necessary data from other UAVs
     def recievedata(self):
         pass
 

@@ -5,6 +5,7 @@ import pickle
 import signal
 import dronekit
 import paramiko
+import getpass
 import threading
 import matplotlib
 import numpy as np
@@ -24,7 +25,7 @@ graphic_object = graphic()
 global params
 
 def Launch_simulation_func(x):
-	os.chdir("/home/aman/Desktop/pythoncodes/swarmmoment/")
+	os.chdir("/home/"+getpass.getuser()+"/IAF/Swarm_testing_SAO/")
 	os.system("python3 simswarm.py " + str(x))
 
 def RTL_func():
@@ -36,7 +37,7 @@ def RTL_func():
 		vehicle.mode = VehicleMode("RTL")
 
 def Plan_mission_func():
-	os.chdir("/home/aman/ardupilot/ArduCopter")
+	os.chdir("/home/"+getpass.getuser()+"/ardupilot/ArduCopter")
 	os.system("sim_vehicle.py -L L1 -I51 --map --sysid 51")
 
 def Plan_formation_func():
@@ -64,8 +65,8 @@ def Save_wp_func():
 	wp_list_file.close()
 
 def Start_mission_func():
-	os.chdir("/home/aman/Swarm_Testing/")
-	os.system("gnome-terminal -e 'python3 Launch.py "+str(params[0]+"'"))
+	os.chdir("/home/"+getpass.getuser()+"/IAF/Swarm_testing_SAO/")
+	os.system("python3 Launch.py "+str(params[0]))
 
 home_layout = [[sg.Text('SwarmSIM Planner', size=(22, 1), font=("Helvetica", 25), text_color='#033F63',justification='left'), sg.Image("logo_50.png")],
 	[sg.Text('='  * 100, size=(80, 1), justification='center')],

@@ -10,6 +10,7 @@ from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 from shapely.geometry import LineString
 from time import time
+import json
 
 def distance(lat1,lon1,lat2,lon2): 
     lon1=radians(lon1) 
@@ -121,6 +122,9 @@ def inside_circle(vel):
 
         return vc
 
+def create_uav_ports(address):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    return sock
 
 def create_and_bind_uav_ports(address):
 
@@ -135,20 +139,22 @@ def create_and_bind_uav_ports(address):
         sock.settimeout(1)
     return sock
 
+def send_data(sock, address, port, data):
+    data_json = json.dumps(data).encode("UTF-8")
+    sock.sendto(data_json, (address, port))
+
 def recv_data(sock):
     try:
-        # conn, addr = self.sock.accept()
-        bin_str = sock.recv(1024)
-
-        # while True:
-
-        # dt=json.loads(bin_str)
-        dt = json.loads(bin_str.decode('utf-8'))
-        return dt
-
-    except Exception as err:
-        print("exception occurred in recv_data " + str(err))
+        data = sock.recv(200)
+        data = json.loads(data.decode('utf-8'))
+        return data
+    except:
+        print("Exception occured in recv_data in helper functions file ")
         return None
+
+
+
+
 
 
 
